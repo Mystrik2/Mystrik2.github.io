@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Portfolio</title>
+    <title>Mystrik Site</title>
     <style>
         /* === COLOR PALETTE & VARIABLES === */
         :root {
@@ -16,6 +16,7 @@
             --accent: #ffc107;          /* Yellow accent */
             --link-color: #4da6ff;      /* Light blue for links */
             --link-hover: #7ec2ff;
+            --market-accent: #ff4d4d;   /* Red for Black Market */
         }
 
         /* === GLOBAL STYLES === */
@@ -33,37 +34,57 @@
             overflow-x: hidden;
         }
 
+        /* Utility to prevent accidental selection/dragging of minigame elements */
+        .no-select {
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-user-drag: none;
+        }
+
         /* === NAVIGATION BAR === */
         .navbar {
             background-color: var(--panel-bg);
             border-bottom: 1px solid var(--panel-border);
-            padding: 0 20px;
+            padding: 10px 20px; 
             display: flex;
             align-items: center;
-            height: 60px;
+            min-height: 60px; 
             position: sticky;
             top: 0;
             z-index: 100;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
         }
 
+        /* CSS Grid trick to force the image to match the text width */
         .nav-brand {
-            display: flex;
-            align-items: center;
-            gap: 12px;
+            display: grid;
+            grid-template-columns: min-content; 
+            grid-template-rows: auto auto;
+            justify-items: center;
+            gap: 4px;
             margin-right: 30px;
             font-weight: bold;
-            font-size: 1.2rem;
+            font-size: 0.85rem;
             color: var(--text-main);
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 2px;
+            text-align: center;
         }
 
         .nav-logo {
-            height: 32px;
-            width: 32px;
-            border-radius: 6px;
-            object-fit: cover;
+            grid-row: 1;
+            grid-column: 1;
+            width: 100%; 
+            min-width: 0; 
+            height: auto;
+            object-fit: contain;
+            background: transparent;
+        }
+
+        .nav-brand-text {
+            grid-row: 2;
+            grid-column: 1;
+            white-space: nowrap; 
         }
 
         .nav-links {
@@ -82,18 +103,597 @@
             color: var(--text-main);
         }
 
-        /* Background image pinned to top, with a sharp diagonal cut */
+        /* === WALKING MASCOT === */
+        .nav-walk-area {
+            flex: 1; 
+            align-self: stretch; 
+            min-height: 50px; 
+            position: relative;
+            margin-left: 20px;
+            overflow: visible; 
+        }
+
+        .floor-rug {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40%;
+            max-width: 400px;
+            bottom: 5px; /* 1px tall, touches the 6px floor */
+            height: 1px;
+            background-color: rgba(203, 166, 247, 0.5); /* Solid lavender with subtle transparency */
+            z-index: 2;
+            border-radius: 1px;
+        }
+
+        .mascot-container {
+            position: absolute;
+            left: 0;
+            bottom: 6px; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 5;
+            cursor: grab;
+        }
+
+        .mascot-container:active {
+            cursor: grabbing;
+        }
+
+        /* === STATUS BARS & XP SYSTEM === */
+        .status-bars {
+            position: absolute;
+            right: 15px;
+            top: 5px; 
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 5;
+            transition: opacity 0.3s;
+        }
+
+        .stat-bar {
+            width: 32px;
+            height: 4px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 2px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .stat-fill {
+            height: 100%;
+            width: 100%;
+            transition: width 0.5s ease-out, background-color 0.5s;
+        }
+
+        .bar-damage .stat-fill {
+            background-color: #ff4d4d !important;
+        }
+
+        .xp-container {
+            position: absolute;
+            left: 15px; 
+            bottom: -6px; 
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            z-index: 5;
+            transition: opacity 0.3s;
+        }
+
+        .xp-label {
+            font-size: 9px;
+            font-weight: bold;
+            color: #ffc107;
+            white-space: nowrap;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+
+        .xp-bar {
+            width: 32px;
+            height: 4px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 2px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .xp-fill {
+            height: 100%;
+            width: 0%;
+            background: #ffc107;
+            transition: width 0.3s;
+        }
+
+        .walking-mascot {
+            position: relative;
+            height: 38px;
+            width: auto;
+            object-fit: contain;
+            top: 0;
+            transition: transform 0.2s ease, top 0.3s ease; 
+        }
+
+        /* Bobbing animation using 'top' */
+        @keyframes walking-bob {
+            0%, 100% { top: 0px; }
+            50% { top: -4px; } 
+        }
+
+        .walking-mascot.is-walking {
+            animation: walking-bob 0.3s infinite ease-in-out;
+        }
+
+        /* === PETTING EFFECTS === */
+        @keyframes rock-pet {
+            0%, 100% { transform: scaleY(0.85) rotate(-5deg); }
+            50% { transform: scaleY(0.85) rotate(5deg); }
+        }
+
+        @keyframes float-up {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-30px) scale(1.5); opacity: 0; }
+        }
+
+        .damage-flash {
+            filter: brightness(0.5) sepia(1) hue-rotate(315deg) saturate(10) !important;
+        }
+
+        /* === REVIVE RAYS === */
+        @keyframes rays-spin {
+            0% { transform: rotate(0deg) scale(0.5); opacity: 1; }
+            50% { transform: rotate(180deg) scale(1.5); opacity: 1; }
+            100% { transform: rotate(360deg) scale(2); opacity: 0; }
+        }
+
+        /* === MASCOT BED === */
+        .mascot-bed {
+            position: absolute;
+            right: 65px; 
+            bottom: 6px; /* Match floor */
+            width: 45px;
+            height: 12px;
+            background: #2c2f40;
+            border: 1px solid #8b92a5;
+            border-radius: 8px 8px 12px 12px;
+            z-index: 3;
+        }
+
+        .mascot-bed::after {
+            content: '';
+            position: absolute;
+            bottom: 2px;
+            left: 5px;
+            width: 35px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .mascot-plushie {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 4px;
+            width: 22px;
+            height: auto;
+            pointer-events: none;
+            z-index: 4;
+            display: none; /* Hidden until bought */
+        }
+
+        /* === LAPTOP === */
+        .mascot-laptop {
+            position: absolute;
+            left: 10px;
+            bottom: 6px;
+            width: 28px;
+            height: auto;
+            z-index: 3;
+            cursor: pointer;
+            display: none; /* Hidden until bought */
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+            transition: transform 0.2s;
+        }
+        .mascot-laptop:hover {
+            transform: scale(1.1);
+        }
+
+        /* === FOOD BOWL === */
+        .food-bowl-wrapper {
+            position: absolute;
+            right: 15px;
+            bottom: 6px; /* Match floor */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 4;
+            cursor: pointer;
+        }
+
+        .food-bowl {
+            width: 26px;
+            height: 12px;
+            background: #2c2f40;
+            border-radius: 2px 2px 15px 15px;
+            border: 1px solid #8b92a5;
+            position: relative;
+            transition: transform 0.1s;
+        }
+        
+        .food-bowl-wrapper:active .food-bowl {
+            transform: scale(0.9);
+        }
+
+        .food-bowl.full::before {
+            content: '';
+            position: absolute;
+            bottom: 13px; 
+            left: 3px; 
+            width: 20px;
+            height: 8px; 
+            background: #1DB954; 
+            border-radius: 10px 10px 0 0;
+        }
+
+        .bowl-label {
+            font-size: 9px;
+            font-weight: bold;
+            color: var(--text-muted);
+            opacity: 0;
+            margin-bottom: 2px;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+
+        .food-bowl-wrapper:hover .bowl-label {
+            opacity: 1;
+        }
+
+        /* === BEAT SABER NOTES & UI === */
+        .bs-note {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border: 1.5px solid white;
+            border-radius: 2px;
+            cursor: grab;
+            z-index: 3;
+            box-shadow: inset -2px -2px 4px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.6);
+            touch-action: none;
+            box-sizing: border-box;
+        }
+        
+        .bs-note:active {
+            cursor: grabbing;
+        }
+
+        .bs-note::after, .currency-icon::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            bottom: 1px; 
+            margin-left: -3.5px;
+            border-left: 3.5px solid transparent;
+            border-right: 3.5px solid transparent;
+            border-top: none;
+            border-bottom: 5px solid white; 
+        }
+
+        @keyframes golden-pulse {
+            0% { box-shadow: inset -2px -2px 4px rgba(0,0,0,0.3), 0 0 5px #FFD700; background-color: #FFD700; }
+            50% { box-shadow: inset -2px -2px 4px rgba(0,0,0,0.3), 0 0 15px #FFF, 0 0 20px #FFD700; background-color: #FFF2A8; }
+            100% { box-shadow: inset -2px -2px 4px rgba(0,0,0,0.3), 0 0 5px #FFD700; background-color: #FFD700; }
+        }
+
+        .golden-note {
+            animation: golden-pulse 1.2s infinite ease-in-out !important;
+            border-color: #FFF !important;
+            z-index: 10 !important;
+        }
+
+        .currency-ui {
+            position: absolute;
+            top: 5px;
+            left: 15px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: var(--text-main);
+            z-index: 10;
+        }
+
+        .currency-icon {
+            position: relative;
+            width: 14px; height: 14px;
+            background: #00bfff;
+            border-radius: 2px;
+            border: 1.5px solid white;
+            box-sizing: border-box;
+        }
+
+        /* === SHOP UI === */
+        .shop-container {
+            position: absolute;
+            top: 5px;
+            left: 80px; 
+            z-index: 20;
+        }
+
+        .shop-toggle-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--panel-border);
+            color: var(--text-main);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .shop-toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .shop-window {
+            display: none;
+            position: absolute;
+            top: 30px;
+            left: 0;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.8);
+            width: 190px;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        
+        .shop-window::-webkit-scrollbar {
+            width: 6px;
+        }
+        .shop-window::-webkit-scrollbar-thumb {
+            background: var(--panel-border);
+            border-radius: 3px;
+        }
+
+        .shop-window.active {
+            display: flex;
+        }
+
+        .shop-title {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 4px;
+            margin-bottom: 2px;
+        }
+
+        .shop-item-btn {
+            background: rgba(0, 191, 255, 0.1);
+            border: 1px solid #00bfff;
+            color: white;
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+            width: 100%;
+            flex-shrink: 0;
+        }
+
+        .shop-item-btn:hover:not(:disabled) {
+            background: rgba(0, 191, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .shop-item-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            border-color: var(--text-muted);
+            background: rgba(0,0,0,0.5);
+        }
+        
+        .shop-item-cost {
+            display: flex;
+            align-items: center;
+            font-weight: bold;
+            color: #00bfff;
+        }
+
+        /* Black Market Style */
+        .market-window {
+            background: #0f0b0b;
+            border-color: #3d1414;
+        }
+        .market-title {
+            color: #ff4d4d;
+            border-color: #3d1414;
+        }
+        .market-item-btn {
+            background: rgba(255, 77, 77, 0.05);
+            border-color: #ff4d4d;
+        }
+        .market-item-btn:hover:not(:disabled) {
+            background: rgba(255, 77, 77, 0.2);
+        }
+        .market-item-cost {
+            color: #ff4d4d;
+        }
+
+        /* === COLOR PICKER UI === */
+        .color-picker-popup {
+            display: none;
+            position: fixed;
+            z-index: 200;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.8);
+            width: 200px;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .color-picker-popup.active {
+            display: flex;
+        }
+
+        .picker-header {
+            font-weight: bold;
+            font-size: 0.85rem;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 6px;
+            color: var(--text-main);
+        }
+
+        .paused-text {
+            color: #ff4d4d;
+            font-size: 0.65rem;
+            float: right;
+            margin-top: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .hue-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 10px;
+            border-radius: 5px;
+            background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+            outline: none;
+        }
+
+        .hue-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid #333;
+            cursor: pointer;
+        }
+
+        #btn-close-picker {
+            background: var(--link-color);
+            border: none;
+            color: #000;
+            padding: 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        #btn-close-picker:hover {
+            background: var(--link-hover);
+        }
+
+        /* === AUTO FEEDER === */
+        .auto-feeder {
+            position: absolute;
+            bottom: 11px;
+            left: 5px;
+            width: 16px;
+            height: 24px;
+            background: var(--panel-bg);
+            border: 1px solid #8b92a5;
+            border-radius: 3px 3px 0 0;
+            z-index: -1;
+            display: none;
+        }
+
+        .auto-feeder::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            height: 10px;
+            background: rgba(29, 185, 84, 0.4); 
+            border-radius: 1px;
+        }
+
+        .auto-feeder::after {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: -3px;
+            width: 20px;
+            height: 5px;
+            background: #4da6ff; 
+            border-radius: 2px;
+        }
+
+        /* === TOY BALL === */
+        .toy-ball {
+            position: absolute;
+            bottom: 6px; /* Match floor */
+            left: 100px;
+            width: 14px;
+            height: 14px;
+            background: #4da6ff; 
+            border-radius: 50%;
+            z-index: 4;
+            cursor: grab;
+            box-shadow: inset -2px -2px 4px rgba(0,0,0,0.3);
+            touch-action: none; 
+            display: none; 
+        }
+
+        .toy-ball:active {
+            cursor: grabbing;
+        }
+
+        /* === DEATH SCREEN === */
+        .death-screen {
+            position: absolute;
+            top: 5px;
+            left: 15px;
+            display: none;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        .death-title {
+            color: #ff4d4d;
+            font-weight: bold;
+            font-size: 1.1rem;
+            text-shadow: 1px 1px 2px black;
+            line-height: 1.2;
+        }
+
+        .death-subtitle {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.75rem;
+            text-shadow: 1px 1px 2px black;
+        }
+
+        /* Background image pinned to top */
         .bg-image {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 550px;
-            /* REPLACE this URL with your preferred background image */
             background: url('https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1920&auto=format&fit=crop') no-repeat center center/cover;
             z-index: -2;
             opacity: 0.25;
-            /* Creates the sharp diagonal box effect from ScoreSaber */
             clip-path: polygon(0 0, 100% 0, 100% 80%, 0 100%);
         }
 
@@ -112,7 +712,7 @@
             max-width: 1100px;
             margin: 40px auto;
             padding: 0 20px;
-            position: relative; /* Ensures container sits above absolute backgrounds */
+            position: relative; 
             z-index: 1;
         }
 
@@ -123,10 +723,10 @@
             padding: 24px;
             margin-bottom: 24px;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-            scroll-margin-top: 90px; /* Prevents sticky nav from covering panels when jumping */
+            scroll-margin-top: 90px; 
         }
 
-        /* === TOP BIO SECTION (BeatSaver Layout) === */
+        /* === TOP BIO SECTION === */
         .bio-header {
             display: flex;
             gap: 30px;
@@ -164,8 +764,57 @@
             flex: 1;
             background-color: rgba(0, 0, 0, 0.2);
             padding: 20px;
+            padding-bottom: 30px; 
             border-radius: 8px;
-            min-height: 180px; /* Prevents jumping when swapping tabs */
+            min-height: 180px; 
+            position: relative; 
+        }
+
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-15deg); }
+            50% { transform: rotate(15deg); }
+            75% { transform: rotate(-15deg); }
+        }
+
+        .bio-mascot {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            width: 75px;
+            height: 75px;
+            object-fit: contain;
+            pointer-events: auto; 
+            cursor: pointer;
+            transform-origin: bottom center; 
+            z-index: 2; 
+        }
+
+        .bio-mascot:hover {
+            animation: wiggle 0.4s ease-in-out infinite;
+        }
+
+        /* === CONFETTI SYSTEM === */
+        .confetti-container {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            width: 75px;
+            height: 75px;
+            pointer-events: none;
+            z-index: 1; 
+            overflow: visible;
+        }
+
+        .confetti-particle {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 2px; 
+            height: 5px; 
+            border-radius: 1px;
+            pointer-events: none;
+            will-change: transform; 
         }
 
         /* === TABS IN BIO === */
@@ -213,13 +862,22 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        .inline-emoji {
+            height: 1.4em;
+            width: 1.4em;
+            vertical-align: -0.2em; 
+            margin-left: 2px;
+            display: inline-block;
+            border-radius: 4px; 
+        }
+
         /* === SOCIALS SECTION === */
         .socials-grid {
             display: flex;
             flex-wrap: wrap;
-            gap: 16px; /* Increased from 12px for better spacing */
+            gap: 16px;
             margin-top: 10px;
-            padding-top: 30px; /* Added more breathing room above */
+            padding-top: 30px; 
             border-top: 1px solid var(--panel-border);
             justify-content: center;
             width: 100%;
@@ -227,11 +885,11 @@
 
         .social-link {
             background-color: transparent;
-            padding: 8px 16px; /* Made bigger */
+            padding: 8px 16px; 
             border-radius: 6px;
-            font-size: 0.95rem; /* Increased text size */
-            font-weight: normal; /* Unbolded text */
-            border: 1px solid; /* Thinned back to 1px */
+            font-size: 0.95rem; 
+            font-weight: normal; 
+            border: 1px solid; 
             transition: all 0.2s ease;
         }
 
@@ -260,31 +918,96 @@
         .social-anilist { color: #02A9FF; border-color: #02A9FF; }
         .social-anilist:hover { background-color: rgba(2, 169, 255, 0.15); color: #02A9FF; }
 
+        .social-beatsaver { color: #FF008F; border-color: #FF008F; }
+        .social-beatsaver:hover { background-color: rgba(255, 0, 143, 0.15); color: #FF008F; }
+
         /* === ART GALLERY === */
+        .gallery-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .gallery-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        #gallery-search, #gallery-sort {
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--panel-border);
+            color: var(--text-main);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: border-color 0.2s;
+        }
+
+        #gallery-search::placeholder {
+            color: var(--text-muted);
+        }
+        
+        #gallery-search:focus, #gallery-sort:focus {
+            outline: none;
+            border-color: var(--link-color);
+        }
+
         .gallery-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
             gap: 16px;
         }
 
-        .gallery-item {
+        .gallery-item-wrap {
+            position: relative;
             width: 100%;
             height: 220px;
-            object-fit: cover;
             border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--panel-border);
             cursor: pointer;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
-            border: 1px solid var(--panel-border);
         }
 
-        .gallery-item:hover {
+        .gallery-item-wrap:hover {
             transform: translateY(-5px);
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
         }
 
-        /* === LIGHTBOX (Zoom modal) === */
+        .gallery-item-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .gallery-item-date {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background: rgba(11, 13, 20, 0.9);
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            font-weight: 600;
+        }
+
+        .gallery-item-wrap:hover .gallery-item-date {
+            opacity: 1;
+        }
+
+        /* === LIGHTBOX === */
         .lightbox {
-            display: none; /* Hidden by default */
+            display: none; 
             position: fixed;
             z-index: 1000;
             top: 0;
@@ -294,17 +1017,73 @@
             background-color: rgba(0, 0, 0, 0.9);
             justify-content: center;
             align-items: center;
+            flex-direction: column;
         }
 
         .lightbox.active {
             display: flex;
         }
 
-        .lightbox img {
-            max-width: 90%;
-            max-height: 90vh;
+        .lightbox-wrapper {
+            display: flex;
+            flex-direction: column;
+            width: 90%;
+            height: 90%;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .lightbox-img-container {
+            flex: 1;
+            width: 100%;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        #lightbox-img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            transition: transform 0.1s ease-out; 
+            user-select: none;
+        }
+
+        .lightbox-info {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--panel-border);
             border-radius: 8px;
-            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            padding: 16px;
+            margin-top: 15px;
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+
+        .lightbox-caption {
+            margin: 0 0 10px 0;
+            font-size: 1rem;
+            color: var(--text-main);
+        }
+
+        .lightbox-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .lightbox-tag {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            border: 1px solid var(--panel-border);
         }
 
         .close-lightbox {
@@ -315,9 +1094,9 @@
             font-size: 40px;
             font-weight: bold;
             cursor: pointer;
+            z-index: 1001;
         }
 
-        /* === BOTTOM BANNER === */
         .footer-banner {
             text-align: center;
             padding: 20px;
@@ -327,28 +1106,16 @@
             border-top: 1px solid var(--panel-border);
         }
 
-        /* === RESPONSIVE DESIGN === */
         @media (max-width: 768px) {
-            .bio-header {
-                flex-direction: column;
-                align-items: center;
-            }
-            .bio-side {
-                width: 100%;
-                box-sizing: border-box;
-            }
-            .tabs-header {
-                flex-wrap: wrap;
-            }
-            .navbar {
-                flex-direction: column;
-                height: auto;
-                padding: 15px 20px;
-                gap: 15px;
-            }
-            .nav-brand {
-                margin-right: 0;
-            }
+            .bio-header { flex-direction: column; align-items: center; }
+            .bio-side { width: 100%; box-sizing: border-box; }
+            .tabs-header { flex-wrap: wrap; }
+            .navbar { flex-direction: column; height: auto; padding: 15px 20px; gap: 15px; }
+            .nav-brand { margin-right: 0; }
+            .nav-walk-area { width: 100%; margin-left: 0; height: 50px; margin-top: 5px; }
+            .gallery-header { flex-direction: column; align-items: flex-start; }
+            .shop-container { left: 5px; top: -20px; } 
+            .xp-container { bottom: -10px; left: 15px; } 
         }
     </style>
 </head>
@@ -357,12 +1124,87 @@
     <!-- NAVIGATION BAR -->
     <nav class="navbar">
         <div class="nav-brand">
-            <img src="https://pbs.twimg.com/profile_images/2024131521477541888/jeu6sElu_400x400.jpg" alt="Logo" class="nav-logo">
-            Mystrik
+            <img src="https://github.com/Mystrik2/Mystrik2.github.io/blob/2.0/assets/logo.png?raw=true" alt="Logo" class="nav-logo no-select" draggable="false">
+            <span class="nav-brand-text">Mystrik</span>
         </div>
         <div class="nav-links">
             <a href="#home" class="nav-link">Home</a>
             <a href="#gallery" class="nav-link">Art Gallery</a>
+        </div>
+        
+        <!-- WALKING MASCOT TRACK -->
+        <div class="nav-walk-area" id="nav-walk-area">
+
+            <!-- Floor Rug -->
+            <div class="floor-rug no-select"></div>
+
+            <!-- Currency Counter -->
+            <div class="currency-ui no-select" id="currency-ui" title="Notes Collected">
+                <div class="currency-icon"></div>
+                <span id="currency-count">0</span>
+            </div>
+
+            <!-- Shop UI -->
+            <div class="shop-container no-select" id="shop-container">
+                <button id="shop-toggle-btn" class="shop-toggle-btn">🛒 Shop</button>
+                <div class="shop-window" id="shop-window">
+                    <div class="shop-title" id="shop-title">Item Shop</div>
+                </div>
+            </div>
+
+            <!-- Black Market UI (Laptop Right Click) -->
+            <div class="shop-container no-select" id="market-container" style="display:none; left:10px;">
+                <div class="shop-window market-window active" id="market-window">
+                    <div class="shop-title market-title">Black Market</div>
+                    <!-- Items populated via JS -->
+                </div>
+            </div>
+
+            <!-- Color Picker Popup -->
+            <div class="color-picker-popup no-select" id="color-picker-popup">
+                <div class="picker-header">🎨 Color Editor <span class="paused-text">(Paused)</span></div>
+                <input type="range" id="hue-slider" class="hue-slider" min="0" max="360" value="0">
+                <button id="btn-close-picker">Done</button>
+            </div>
+
+            <!-- Death Screen Text -->
+            <div class="death-screen no-select" id="death-screen">
+                <div class="death-title">You Killed Goob!</div>
+                <div class="death-subtitle">Double Click It To Restart</div>
+            </div>
+            
+            <!-- Bed for sleeping -->
+            <div class="mascot-bed no-select" id="mascot-bed" title="Mascot Bed">
+                <img src="https://f2.toyhou.se/file/f2-toyhou-se/thumbnails/115040613_3Za.png" alt="Plushie" class="mascot-plushie" id="mascot-plushie">
+            </div>
+
+            <!-- Laptop Item -->
+            <img src="https://imgs.search.brave.com/0OeOVhQyccw1fz6Gs6s65k78BBewO0By_tpaqrjt2XY/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9lbW9q/aWdyYXBoLm9yZy9t/ZWRpYS9taWNyb3Nv/ZnQvbGFwdG9wXzFm/NGJiLnBuZw" alt="Laptop" class="mascot-laptop no-select" id="mascot-laptop" draggable="false">
+
+            <div class="mascot-container no-select" id="mascot-wrapper" title="You can pick me up or pet me!">
+                <img src="https://f2.toyhou.se/file/f2-toyhou-se/images/109037807_cPMFTHIKezVdr8U.png" alt="Walking Mascot" class="walking-mascot no-select" id="walking-mascot" draggable="false">
+            </div>
+            
+            <div class="toy-ball no-select" id="toy-ball" title="Drag to throw!"></div>
+            
+            <!-- Status Meters -->
+            <div class="status-bars no-select" id="status-bars">
+                <div class="stat-bar" title="Hunger"><div class="stat-fill" id="hunger-fill" style="background: #1DB954;"></div></div>
+                <div class="stat-bar" title="Energy"><div class="stat-fill" id="energy-fill" style="background: #4da6ff;"></div></div>
+                <div class="stat-bar" title="Mood"><div class="stat-fill" id="mood-fill" style="background: #FF008F;"></div></div>
+            </div>
+
+            <!-- XP Bar -->
+            <div class="xp-container no-select" id="xp-container" title="Level / XP">
+                <span class="xp-label"><span id="level-count">0</span></span>
+                <div class="xp-bar"><div class="xp-fill" id="xp-fill"></div></div>
+            </div>
+
+            <div class="food-bowl-wrapper no-select" id="food-bowl-btn" title="Click to refill!">
+                <div class="bowl-label">Refill</div>
+                <div class="auto-feeder" id="auto-feeder"></div>
+                <div class="food-bowl" id="food-bowl"></div>
+            </div>
         </div>
     </nav>
 
@@ -372,44 +1214,47 @@
         
         <div class="panel bio-header">
             <div class="profile-side">
-                <img src="https://pbs.twimg.com/profile_images/2024131521477541888/jeu6sElu_400x400.jpg" alt="Profile Picture" class="profile-pic">
+                <img src="https://pbs.twimg.com/profile_images/2024131521477541888/jeu6sElu_400x400.jpg" alt="Profile Picture" class="profile-pic no-select" draggable="false">
                 <h1 class="profile-name">Mystrik</h1>
                 <p class="profile-tag">He/Him</p>
             </div>
             
             <div class="bio-side">
-                <!-- TABS HEADER -->
                 <div class="tabs-header">
                     <button class="tab-btn active" onclick="switchTab(event, 'tab-about')">About Me</button>
                     <button class="tab-btn" onclick="switchTab(event, 'tab-interests')">Interests</button>
                     <button class="tab-btn" onclick="switchTab(event, 'tab-setup')">Hardware</button>
                 </div>
 
-                <!-- TAB CONTENT: ABOUT -->
                 <div id="tab-about" class="tab-content active">
-                    <p style="margin-top: 0;">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+                    <p style="margin-top: 0;">Beat Saber mapper and player. Challenge Saber 29, Former top 20 Scoresaber (washed <img src="https://github.com/Mystrik2/Mystrik2.github.io/blob/2.0/assets/woeisme.png?raw=true" alt="emoji" class="inline-emoji no-select" draggable="false">)</p>
                 </div>
 
-                <!-- TAB CONTENT: INTERESTS -->
                 <div id="tab-interests" class="tab-content">
                     <ul style="margin-top: 0; color: var(--text-muted);">
-                        <li>this</li>
-                        <li>is</li>
-                        <li>interests</li>
+                        <li>i enjoy most individual sports (tennis, etc.)</li>
+                        <li>VR nerd (not as much recently).</li>
+                        <li>most frugal mf ever, it's a fun lifestyle especially when it isn't relied on.</li>
+                        <li>current hyperfixations include: frugality and art</li>
+                        <li>want to try crafting</li>
+                        <li>tech guy</li>
                     </ul>
                 </div>
 
-                <!-- TAB CONTENT: SETUP -->
                 <div id="tab-setup" class="tab-content">
                     <p style="margin-top: 0; color: var(--text-muted);">
-                        <strong>Computer:</strong> Specs<br><br>
-                        <strong>Or:</strong> Something<br><br>
-                        <strong>Goes:</strong> Here
+                        <strong>VR:</strong> Valve Index<br><br>
+                        <strong>GPU:</strong> NVIDIA GeForce RTX 3060 Ti<br><br>
+                        <strong>CPU:</strong> AMD Ryzen 7 7700X 8-Core Processor<br><br>
+                        <strong>RAM:</strong> 32 GB DDR5
                     </p>
                 </div>
+
+                <div id="confetti-container" class="confetti-container"></div>
+                <img src="https://f2.toyhou.se/file/f2-toyhou-se/images/109037807_cPMFTHIKezVdr8U.png" alt="Mascot" class="bio-mascot no-select" id="mascot" draggable="false">
             </div>
 
-            <!-- Socials moved here to span the bottom -->
+            <!-- Socials -->
             <div class="socials-grid">
                 <a href="https://x.com/MystrikVR" class="social-link social-twitter" target="_blank">Twitter</a>
                 <a href="https://toyhou.se/Mystrik" class="social-link social-toyhouse" target="_blank">Toyhouse</a>
@@ -419,51 +1264,141 @@
                 <a href="https://discord.gg/UNv68525eQ" class="social-link social-discord" target="_blank">Discord</a>
                 <a href="https://open.spotify.com/user/uf6i7rcawkijy07sa9q9x5aoa" class="social-link social-spotify" target="_blank">Spotify</a>
                 <a href="https://anilist.co/user/mystrik" class="social-link social-anilist" target="_blank">AniList</a>
+                <a href="https://beatsaver.com/profile/4284922" class="social-link social-beatsaver" target="_blank">BeatSaver</a>
             </div>
         </div>
 
         <div class="panel" id="gallery">
-            <h2 style="margin-top: 0; font-size: 1.2rem;">Art Gallery [wip]</h2>
-            <div class="gallery-grid">
-                <img src="https://f2.toyhou.se/file/f2-toyhou-se/images/109037807_cPMFTHIKezVdr8U.png" alt="Artwork 2" class="gallery-item" onclick="openLightbox(this)">
-                <img src="https://f2.toyhou.se/file/f2-toyhou-se/images/109760338_GahxNfTbfcacYct.png" alt="Artwork 3" class="gallery-item" onclick="openLightbox(this)">
+            <div class="gallery-header">
+                <h2 style="margin: 0; font-size: 1.2rem;">Art Gallery</h2>
+                <div class="gallery-controls">
+                    <input type="text" id="gallery-search" placeholder="Search tags (e.g. blue sketch)">
+                    <select id="gallery-sort">
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                    </select>
+                </div>
             </div>
+            <div class="gallery-grid" id="gallery-grid"></div>
         </div>
 
         <div class="footer-banner">
             <p>&copy; 2026 Mystrik. Built for ur mom.</p>
         </div>
-
     </div>
 
-    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
-        <span class="close-lightbox">&times;</span>
-        <img id="lightbox-img" src="" alt="Zoomed Art">
+    <!-- LIGHTBOX -->
+    <div class="lightbox" id="lightbox">
+        <span class="close-lightbox" onclick="closeLightbox()">&times;</span>
+        <div class="lightbox-wrapper">
+            <div class="lightbox-img-container" id="lightbox-img-container">
+                <img id="lightbox-img" src="" alt="Zoomed Art" draggable="false">
+            </div>
+            <div class="lightbox-info">
+                <p class="lightbox-caption" id="lightbox-caption"></p>
+                <div class="lightbox-tags" id="lightbox-tags"></div>
+            </div>
+        </div>
     </div>
 
     <script>
         // --- TAB SWITCHING LOGIC ---
         function switchTab(event, tabId) {
-            // Hide all tab content
             const contents = document.querySelectorAll('.tab-content');
             contents.forEach(content => content.classList.remove('active'));
-
-            // Remove active class from all buttons
             const buttons = document.querySelectorAll('.tab-btn');
             buttons.forEach(btn => btn.classList.remove('active'));
-
-            // Show selected tab content and highlight clicked button
             document.getElementById(tabId).classList.add('active');
             event.currentTarget.classList.add('active');
         }
 
-        // --- GALLERY ZOOM LOGIC ---
-        const lightbox = document.getElementById('lightbox');
-        const lightboxImg = document.getElementById('lightbox-img');
+        // --- GALLERY DATA ---
+        const myGallery = [
+            {
+                src: "https://f2.toyhou.se/file/f2-toyhou-se/images/109037807_cPMFTHIKezVdr8U.png",
+                date: "3-11-25",
+                caption: "Mein Gott Leute, meine Mama hat mir einfach erlaubt dass ich Cola trinken darf! Wie cool ist das bitte? Jetzt zocke ich Fortnite and trinke Cola! YIPPEE!",
+                tags: ["goob", "fullbody", "sticker"]
+            },
+            {
+                src: "https://f2.toyhou.se/file/f2-toyhou-se/images/109760338_GahxNfTbfcacYct.png",
+                date: "10-19-25",
+                caption: "mayhaps i TWIMST",
+                tags: ["goob", "fullbody", "meme"]
+            }
+        ];
 
-        function openLightbox(element) {
-            lightboxImg.src = element.src; 
-            lightbox.classList.add('active'); 
+        // --- GALLERY RENDERING & SEARCH/SORT LOGIC ---
+        const galleryGrid = document.getElementById('gallery-grid');
+        const searchInput = document.getElementById('gallery-search');
+        const sortSelect = document.getElementById('gallery-sort');
+
+        function renderGallery() {
+            const queryTerms = searchInput.value.toLowerCase().split(/\s+/).filter(t => t);
+            let filteredGallery = myGallery.filter(item => {
+                if (queryTerms.length === 0) return true;
+                return queryTerms.every(term => item.tags.some(tag => tag.toLowerCase().includes(term)));
+            });
+
+            const sortOrder = sortSelect.value;
+            filteredGallery.sort((a, b) => {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+            });
+
+            galleryGrid.innerHTML = '';
+            filteredGallery.forEach(item => {
+                const wrap = document.createElement('div');
+                wrap.className = 'gallery-item-wrap';
+                wrap.onclick = () => openLightbox(item);
+                
+                const img = document.createElement('img');
+                img.src = item.src;
+                img.loading = "lazy";
+                img.draggable = false;
+                
+                const dateTooltip = document.createElement('div');
+                dateTooltip.className = 'gallery-item-date';
+                dateTooltip.textContent = `Created: ${item.date}`;
+                
+                wrap.appendChild(img);
+                wrap.appendChild(dateTooltip);
+                galleryGrid.appendChild(wrap);
+            });
+        }
+        searchInput.addEventListener('input', renderGallery);
+        sortSelect.addEventListener('change', renderGallery);
+        renderGallery();
+
+        // --- LIGHTBOX & ZOOM/PAN LOGIC ---
+        const lightbox = document.getElementById('lightbox');
+        const zoomImg = document.getElementById('lightbox-img');
+        const imgContainer = document.getElementById('lightbox-img-container');
+        
+        let scale = 1, panning = false, pointX = 0, pointY = 0, startX = 0, startY = 0;
+
+        function updateTransform() {
+            zoomImg.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+            if (scale > 1) zoomImg.style.cursor = panning ? "grabbing" : "grab";
+            else zoomImg.style.cursor = "default";
+        }
+
+        function openLightbox(item) {
+            zoomImg.src = item.src;
+            document.getElementById('lightbox-caption').textContent = item.caption;
+            const tagsContainer = document.getElementById('lightbox-tags');
+            tagsContainer.innerHTML = '';
+            item.tags.forEach(tag => {
+                const span = document.createElement('span');
+                span.className = 'lightbox-tag';
+                span.textContent = `#${tag}`;
+                tagsContainer.appendChild(span);
+            });
+
+            scale = 1; pointX = 0; pointY = 0;
+            updateTransform();
+            lightbox.classList.add('active');
             document.body.style.overflow = 'hidden'; 
         }
 
@@ -471,6 +1406,683 @@
             lightbox.classList.remove('active'); 
             document.body.style.overflow = 'auto'; 
         }
+
+        lightbox.addEventListener('click', (e) => {
+            if (e.target === lightbox || e.target.classList.contains('lightbox-wrapper') || e.target === imgContainer) {
+                closeLightbox();
+            }
+        });
+
+        imgContainer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = Math.sign(e.deltaY || -e.wheelDelta);
+            if (delta > 0) scale /= 1.15; 
+            else scale *= 1.15; 
+            scale = Math.max(1, Math.min(scale, 6)); 
+            if (scale === 1) { pointX = 0; pointY = 0; }
+            updateTransform();
+        });
+
+        imgContainer.addEventListener('mousedown', (e) => {
+            if (scale <= 1 || e.target !== zoomImg) return;
+            e.preventDefault();
+            panning = true;
+            startX = e.clientX - pointX;
+            startY = e.clientY - pointY;
+            zoomImg.style.transition = 'none'; 
+            updateTransform();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!panning) return;
+            pointX = e.clientX - startX;
+            pointY = e.clientY - startY;
+            updateTransform();
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (panning) {
+                panning = false;
+                zoomImg.style.transition = 'transform 0.1s ease-out'; 
+                updateTransform();
+            }
+        });
+
+        // --- MASCOT CONFETTI SYSTEM ---
+        const mascot = document.getElementById('mascot');
+        const confettiContainer = document.getElementById('confetti-container');
+        let confettiInterval;
+        let activeParticles = [];
+        let physicsLoopRunning = false;
+
+        mascot.addEventListener('mouseenter', () => {
+            for(let i = 0; i < 5; i++) createConfetti();
+            confettiInterval = setInterval(createConfetti, 40); 
+        });
+
+        mascot.addEventListener('mouseleave', () => {
+            clearInterval(confettiInterval);
+        });
+
+        function startPhysicsLoop() {
+            if (!physicsLoopRunning) {
+                physicsLoopRunning = true;
+                requestAnimationFrame(physicsLoop);
+            }
+        }
+
+        function physicsLoop() {
+            if (activeParticles.length === 0) {
+                physicsLoopRunning = false;
+                return; 
+            }
+            const footer = document.querySelector('.footer-banner');
+            const containerRect = confettiContainer.getBoundingClientRect();
+            const footerRect = footer.getBoundingClientRect();
+            const maxFall = footerRect.bottom - containerRect.bottom;
+
+            for (let i = activeParticles.length - 1; i >= 0; i--) {
+                const p = activeParticles[i];
+                p.vy += 0.3; 
+                p.vx *= 0.92; 
+                p.x += p.vx;
+                p.y += p.vy;
+                p.rot += p.rotSpeed;
+                p.el.style.transform = `translate(calc(-50% + ${p.x}px), ${p.y}px) rotate(${p.rot}deg)`;
+                if (p.y > maxFall) {
+                    p.el.remove();
+                    activeParticles.splice(i, 1);
+                }
+            }
+            requestAnimationFrame(physicsLoop);
+        }
+
+        function createConfetti() {
+            const particle = document.createElement('div');
+            particle.className = 'confetti-particle';
+            const colors = ['#0742DE', '#0776DE', '#1CC3FF', '#33EBFF', '#70FFFF', '#A3FFF5', '#870FFF', '#904DDB', '#5A42FF', '#4D67DB'];
+            particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            confettiContainer.appendChild(particle);
+            activeParticles.push({
+                el: particle,
+                x: 0,
+                y: 0,
+                vx: (Math.random() - 0.5) * 8, 
+                vy: -(Math.random() * 8 + 6), 
+                rot: Math.random() * 360,
+                rotSpeed: (Math.random() - 0.5) * 15
+            });
+            startPhysicsLoop(); 
+        }
+
+        // --- WALKING MASCOT LOGIC (TAMAGOTCHI) ---
+        const mascotWrapper = document.getElementById('mascot-wrapper');
+        const walkingMascot = document.getElementById('walking-mascot');
+        const walkArea = document.getElementById('nav-walk-area');
+        const foodBowlBtn = document.getElementById('food-bowl-btn');
+        const foodBowl = document.getElementById('food-bowl');
+        const hungerFill = document.getElementById('hunger-fill');
+        const energyFill = document.getElementById('energy-fill');
+        const moodFill = document.getElementById('mood-fill');
+        const statusBars = document.getElementById('status-bars');
+        const xpContainer = document.getElementById('xp-container');
+        const deathScreen = document.getElementById('death-screen');
+        const currencyUi = document.getElementById('currency-ui');
+        const currencyCountText = document.getElementById('currency-count');
+        
+        const shopContainer = document.getElementById('shop-container');
+        const shopToggleBtn = document.getElementById('shop-toggle-btn');
+        const shopWindow = document.getElementById('shop-window');
+        
+        const mascotPlushie = document.getElementById('mascot-plushie');
+        const mascotBed = document.getElementById('mascot-bed');
+        const mascotLaptop = document.getElementById('mascot-laptop');
+        
+        const marketContainer = document.getElementById('market-container');
+        const marketWindow = document.getElementById('market-window');
+
+        // Color Picker UI
+        const colorPickerPopup = document.getElementById('color-picker-popup');
+        const hueSlider = document.getElementById('hue-slider');
+        const btnClosePicker = document.getElementById('btn-close-picker');
+        
+        const autoFeederEl = document.getElementById('auto-feeder');
+
+        let currentWalkX = 20; 
+        let hunger = 100;
+        let energy = 100;
+        let mood = 100;
+        let currency = 0;
+        
+        let isDead = false;
+        let isEating = false;
+        let isSleeping = false;
+        let isUsingLaptop = false;
+        let isGoingToSleep = false;
+        let isGoingToFood = false;
+        let isGoingToLaptop = false;
+        let isGoingToToy = null;
+        let isPetting = false;
+        let isBowlFull = false;
+        let walkTimeout;
+        
+        let isPaused = false;
+        let selectedColorEntity = null;
+
+        // --- XP SYSTEM LOGIC ---
+        let xp = 0;
+        let currentLevel = 0;
+        const levelCountText = document.getElementById('level-count');
+        const xpFill = document.getElementById('xp-fill');
+
+        function getMaxXp(lvl) {
+            return 20; 
+        }
+
+        function addXp(amount) {
+            if (isDead) return;
+            
+            // Effect of Laptop / Addy
+            let multiplier = 1;
+            if (isUsingLaptop) {
+                multiplier = hasAddy ? 0.5 : 0;
+            }
+
+            xp += (amount * multiplier);
+            
+            let leveledUp = false;
+            while (xp >= getMaxXp(currentLevel)) {
+                xp -= getMaxXp(currentLevel);
+                currentLevel++;
+                leveledUp = true;
+            }
+            levelCountText.textContent = currentLevel;
+            xpFill.style.width = `${(xp / getMaxXp(currentLevel)) * 100}%`;
+            
+            if (leveledUp) {
+                updateShopUI();
+                if (Math.random() < 0.067) dropNote(true);
+            }
+        }
+
+        // --- POSITION INTERRUPT HELPER ---
+        let mascotX = currentWalkX;
+        let mascotY = 6;
+
+        function stopMascotMovement() {
+            clearTimeout(walkTimeout);
+            walkingMascot.classList.remove('is-walking');
+            walkingMascot.style.animation = '';
+            
+            if (mascotWrapper.style.transition !== 'none') {
+                mascotX = parseFloat(getComputedStyle(mascotWrapper).left) || 0;
+                if (!isThrown && !isDraggingMascot) mascotY = 6;
+                else mascotY = parseFloat(getComputedStyle(mascotWrapper).bottom) || 6;
+                currentWalkX = mascotX;
+            }
+
+            mascotWrapper.style.transition = 'none';
+            mascotWrapper.style.left = `${mascotX}px`;
+            mascotWrapper.style.bottom = `${mascotY}px`;
+        }
+
+        // --- SHOP CREATION & SORTING LOGIC ---
+        let hasBall = false;
+        let hasAutoFeeder = false;
+        let hasToyColor = false;
+        let hasGoobColor = false;
+        let hasPlushie = false;
+        let hasLaptop = false;
+        let hasAddy = false;
+
+        const shopBtnBall = document.createElement('button');
+        shopBtnBall.className = 'shop-item-btn';
+        
+        const shopBtnFeeder = document.createElement('button');
+        shopBtnFeeder.className = 'shop-item-btn';
+
+        const shopBtnToyColor = document.createElement('button');
+        shopBtnToyColor.className = 'shop-item-btn';
+
+        const shopBtnGoobColor = document.createElement('button');
+        shopBtnGoobColor.className = 'shop-item-btn';
+
+        const shopBtnPlushie = document.createElement('button');
+        shopBtnPlushie.className = 'shop-item-btn';
+
+        const shopBtnLaptop = document.createElement('button');
+        shopBtnLaptop.className = 'shop-item-btn';
+
+        // Black Market Items
+        const marketBtnAddy = document.createElement('button');
+        marketBtnAddy.className = 'shop-item-btn market-item-btn';
+
+        shopToggleBtn.addEventListener('click', (e) => {
+            if (!isDead) shopWindow.classList.toggle('active');
+            e.stopPropagation();
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!shopContainer.contains(e.target)) {
+                shopWindow.classList.remove('active');
+            }
+            if (!marketContainer.contains(e.target)) {
+                marketContainer.style.display = 'none';
+            }
+        });
+
+        // Laptop Right Click for Black Market
+        mascotLaptop.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            if (isDead) return;
+            marketContainer.style.display = 'block';
+            updateShopUI(); // Refresh market buttons
+        });
+
+        function updateShopUI() {
+            if (isDead) {
+                shopContainer.style.display = 'none';
+                shopWindow.classList.remove('active');
+                marketContainer.style.display = 'none';
+            } else {
+                shopContainer.style.display = 'block';
+                
+                const shopItems = [
+                    { btn: shopBtnBall, has: hasBall, req: 0, name: 'Toy Ball' },
+                    { btn: shopBtnFeeder, has: hasAutoFeeder, req: 0, name: 'Auto-Feeder' },
+                    { btn: shopBtnToyColor, has: hasToyColor, req: 0, name: 'Toy Paint' },
+                    { btn: shopBtnGoobColor, has: hasGoobColor, req: 0, name: 'Goob Paint' },
+                    { btn: shopBtnPlushie, has: hasPlushie, req: 0, name: 'Bed Plushie' },
+                    { btn: shopBtnLaptop, has: hasLaptop, req: 0, name: 'Laptop' }
+                ];
+
+                Array.from(shopWindow.children).forEach(c => {
+                    if (c.id !== 'shop-title') shopWindow.removeChild(c);
+                });
+
+                shopItems.forEach(item => {
+                    if (!item.has) {
+                        item.btn.disabled = currentLevel < item.req;
+                        item.btn.innerHTML = `<span>${item.name}</span><span class="shop-item-cost">${currentLevel < item.req ? 'Lv.'+item.req : 'Free'}</span>`;
+                        shopWindow.appendChild(item.btn);
+                    }
+                });
+
+                shopItems.forEach(item => {
+                    if (item.has) {
+                        item.btn.disabled = true;
+                        item.btn.innerHTML = `<span>${item.name}</span><span class="shop-item-cost" style="color:var(--text-muted)">Sold</span>`;
+                        shopWindow.appendChild(item.btn);
+                    }
+                });
+
+                // Update Market Items
+                Array.from(marketWindow.children).forEach(c => {
+                    if (c.classList.contains('market-item-btn')) marketWindow.removeChild(c);
+                });
+
+                if (!hasAddy) {
+                    marketBtnAddy.disabled = currency < 100;
+                    marketBtnAddy.innerHTML = `<span>Addy</span><span class="shop-item-cost market-item-cost">100 <div class="currency-icon" style="transform: scale(0.6); margin-left: 2px; background:#ff4d4d;"></div></span>`;
+                    marketWindow.appendChild(marketBtnAddy);
+                } else {
+                    marketBtnAddy.disabled = true;
+                    marketBtnAddy.innerHTML = `<span>Addy</span><span class="shop-item-cost market-item-cost">Owned</span>`;
+                    marketWindow.appendChild(marketBtnAddy);
+                }
+            }
+        }
+
+        shopBtnBall.addEventListener('click', () => { if (!hasBall && !isDead) { hasBall = true; toyBall.el.style.display = 'block'; updateShopUI(); } });
+        shopBtnFeeder.addEventListener('click', () => { if (!hasAutoFeeder && !isDead) { hasAutoFeeder = true; autoFeederEl.style.display = 'block'; updateShopUI(); } });
+        shopBtnToyColor.addEventListener('click', () => { if (!hasToyColor && !isDead) { hasToyColor = true; updateShopUI(); } });
+        shopBtnGoobColor.addEventListener('click', () => { if (!hasGoobColor && !isDead) { hasGoobColor = true; updateShopUI(); } });
+        shopBtnPlushie.addEventListener('click', () => { if (!hasPlushie && !isDead) { hasPlushie = true; mascotPlushie.style.display = 'block'; updateShopUI(); } });
+        shopBtnLaptop.addEventListener('click', () => { if (!hasLaptop && !isDead) { hasLaptop = true; mascotLaptop.style.display = 'block'; updateShopUI(); } });
+
+        marketBtnAddy.addEventListener('click', () => {
+            if (currency >= 100 && !hasAddy && !isDead) {
+                currency -= 100;
+                currencyCountText.textContent = currency;
+                hasAddy = true;
+                updateShopUI();
+            }
+        });
+
+        // --- COLOR CUSTOMIZER / POPUP LOGIC ---
+        function openColorPicker(el, clientX, clientY) {
+            isPaused = true;
+            stopMascotMovement();
+            selectedColorEntity = el;
+            hueSlider.value = el.dataset.hue || 0;
+            colorPickerPopup.style.left = `${Math.min(clientX + 10, window.innerWidth - 220)}px`;
+            colorPickerPopup.style.top = `${Math.min(clientY + 10, window.innerHeight - 150)}px`;
+            colorPickerPopup.classList.add('active');
+        }
+
+        hueSlider.addEventListener('input', (e) => {
+            if (selectedColorEntity) {
+                const val = e.target.value;
+                selectedColorEntity.dataset.hue = val;
+                selectedColorEntity.style.filter = `hue-rotate(${val}deg)`;
+            }
+        });
+
+        btnClosePicker.addEventListener('click', () => {
+            colorPickerPopup.classList.remove('active');
+            selectedColorEntity = null;
+            isPaused = false;
+            if (!isDead && !isDraggingMascot && !isThrown && !isPetting && !isSleeping && !isUsingLaptop) {
+                walkTimeout = setTimeout(walkMascot, 500); 
+            }
+        });
+
+        mascotWrapper.addEventListener('contextmenu', (e) => {
+            if (!hasGoobColor || isDead) return;
+            e.preventDefault();
+            openColorPicker(walkingMascot, e.clientX, e.clientY);
+        });
+
+        // --- TOY PHYSICS ---
+        const draggables = [];
+        const activeNotes = [];
+        const toyBall = { el: document.getElementById('toy-ball'), isBall: true, x: 150, y: 6, vx: 0, vy: 0, rot: 0 };
+        toyBall.el.addEventListener('contextmenu', (e) => { if (!hasToyColor || isDead) return; e.preventDefault(); openColorPicker(toyBall.el, e.clientX, e.clientY); });
+
+        function makeDraggable(obj, onDragEndCallback) {
+            obj.isDragging = false;
+            obj.dragMoved = false;
+            obj.onStart = (e) => {
+                if (isDead || isPaused) return;
+                if (obj.isBall && !hasBall) return;
+                obj.isDragging = true;
+                obj.dragMoved = false;
+                const c = e.touches ? e.touches[0] : e;
+                obj.startX = c.clientX; obj.startY = c.clientY;
+                obj.lastMouseX = obj.startX; obj.lastMouseY = obj.startY;
+                obj.vx = 0; obj.vy = 0;
+                if (!e.touches) e.preventDefault();
+            };
+            obj.onMove = (e) => {
+                if (!obj.isDragging) return;
+                const c = e.touches ? e.touches[0] : e;
+                const distMoved = Math.hypot(c.clientX - obj.startX, c.clientY - obj.startY);
+                if (distMoved > 3) obj.dragMoved = true;
+                const dx = c.clientX - obj.lastMouseX; const dy = c.clientY - obj.lastMouseY;
+                obj.vx = dx * 0.6; obj.vy = -dy * 0.6;
+                obj.lastMouseX = c.clientX; obj.lastMouseY = c.clientY;
+                obj.x += dx; obj.y -= dy;
+                const mw = walkArea.clientWidth - 14 - 35;
+                obj.x = Math.max(10, Math.min(obj.x, mw - 85));
+                obj.y = Math.max(6, Math.min(obj.y, walkArea.clientHeight - 14));
+                obj.el.style.left = `${obj.x}px`;
+                obj.el.style.bottom = `${obj.y}px`;
+            };
+            obj.onEnd = (e) => { if (obj.isDragging) { obj.isDragging = false; if (onDragEndCallback) onDragEndCallback(obj); } };
+            obj.el.addEventListener('mousedown', obj.onStart);
+            obj.el.addEventListener('touchstart', obj.onStart, {passive: true});
+            draggables.push(obj);
+        }
+        makeDraggable(toyBall);
+        window.addEventListener('mousemove', (e) => draggables.forEach(d => d.onMove(e)));
+        window.addEventListener('touchmove', (e) => draggables.forEach(d => d.onMove(e)), {passive: true});
+        window.addEventListener('mouseup', (e) => draggables.forEach(d => d.onEnd(e)));
+        window.addEventListener('touchend', (e) => draggables.forEach(d => d.onEnd(e)));
+
+        function applyPhysics(obj, maxObjX, maxObjY, friction, bounce) {
+            if (!obj.isDragging) {
+                obj.vy -= 0.6; obj.x += obj.vx; obj.y += obj.vy;
+                obj.vx *= 0.99; obj.vy *= 0.99;
+                if (obj.y <= 6) { obj.y = 6; obj.vy *= -bounce; obj.vx *= friction; if (Math.abs(obj.vy) < 1) obj.vy = 0; }
+                if (obj.x <= 10) { obj.x = 10; obj.vx *= -0.8; } else if (obj.x >= maxObjX) { obj.x = maxObjX; obj.vx *= -0.8; }
+                obj.el.style.left = `${obj.x}px`; obj.el.style.bottom = `${obj.y}px`;
+                if (!obj.isBall) obj.el.style.transform = `rotate(${obj.rot}deg)`;
+                const sc = obj.spawnTime && (Date.now() - obj.spawnTime < 1000);
+                const kc = obj.kickTime && (Date.now() - obj.kickTime < 500);
+                if (!sc && !kc && !isDead && !isDraggingMascot && !isThrown) {
+                    const mCX = mascotX + 20; const mCY = mascotY + 19;
+                    const bCX = obj.x + 7; const bCY = obj.y + 7;
+                    const dist = Math.hypot(bCX - mCX, bCY - mCY);
+                    const speed = Math.hypot(obj.vx, obj.vy);
+                    if (dist < 22 && speed > 5) { applyDamage(speed); obj.vx *= -0.8; obj.vy *= -0.8; }
+                }
+            }
+        }
+
+        function updatePhysicsLoop() {
+            if (!isPaused) {
+                const maxW = walkArea.clientWidth - 14 - 35 - 85; const maxH = walkArea.clientHeight - 14;
+                if (hasBall) applyPhysics(toyBall, maxW, maxH, 0.90, 0.75);
+                for (let i = activeNotes.length - 1; i >= 0; i--) applyPhysics(activeNotes[i], maxW, maxH, 0.85, 0.5);
+            }
+            requestAnimationFrame(updatePhysicsLoop);
+        }
+        updatePhysicsLoop();
+
+        // --- NOTES ---
+        setInterval(() => {
+            if (isDead || mood === 0 || isPaused) return;
+            if (Math.random() < (mood / 100) * 0.5) dropNote(false); 
+        }, 3000);
+
+        function dropNote(isGolden = false) {
+            const noteEl = document.createElement('div');
+            noteEl.className = 'bs-note no-select';
+            if (isGolden) noteEl.classList.add('golden-note');
+            else noteEl.style.backgroundColor = `hsl(${Math.random()*360}, 100%, 50%)`;
+            const rot = Math.floor(Math.random() * 4) * 90;
+            noteEl.style.transform = `rotate(${rot}deg)`;
+            noteEl.addEventListener('contextmenu', (e) => { if (!hasToyColor || isDead || isGolden) return; e.preventDefault(); openColorPicker(noteEl, e.clientX, e.clientY); });
+            walkArea.appendChild(noteEl);
+            const noteObj = { el: noteEl, isBall: false, isGolden, x: currentWalkX + 10, y: 45, vx: (Math.random()-0.5)*4, vy: Math.random()*2+2, rot, spawnTime: Date.now() };
+            activeNotes.push(noteObj);
+            makeDraggable(noteObj, (cn) => {
+                if (!cn.dragMoved) {
+                    currency += cn.isGolden ? 3 : 1;
+                    currencyCountText.textContent = currency;
+                    addXp(cn.isGolden ? 2 : 1);
+                    cn.el.remove();
+                    activeNotes.splice(activeNotes.indexOf(cn), 1);
+                    draggables.splice(draggables.indexOf(cn), 1);
+                }
+            });
+            setTimeout(() => { if (noteEl.parentNode) { noteEl.remove(); activeNotes.splice(activeNotes.indexOf(noteObj), 1); draggables.splice(draggables.indexOf(noteObj), 1); } }, 20000);
+        }
+
+        // --- MASCOT PHYSICS ---
+        let mascotVx = 0; let mascotVy = 0; let isDraggingMascot = false; let isThrown = false; let mascotLMX = 0; let mascotLMY = 0;
+        function updateMascotPhysics() {
+            if (!isPaused && isThrown && !isDraggingMascot) {
+                mascotVy -= 0.6; mascotX += mascotVx; mascotY += mascotVy;
+                mascotVx *= 0.99; mascotVy *= 0.99;
+                if (mascotY <= 6) {
+                    mascotY = 6; if (Math.abs(mascotVy) > 4) applyDamage(Math.abs(mascotVy));
+                    mascotVy *= -0.4; mascotVx *= 0.8;
+                    if (Math.abs(mascotVy) < 1.5 && Math.abs(mascotVx) < 0.5) { isThrown = false; mascotVy = 0; mascotVx = 0; mascotY = 6; currentWalkX = mascotX; if (!isDead && !isPetting && !isSleeping && !isUsingLaptop) walkTimeout = setTimeout(walkMascot, 500); }
+                }
+                const maxMX = walkArea.clientWidth - 40; mascotX = Math.max(0, Math.min(mascotX, maxMX));
+                mascotWrapper.style.left = `${mascotX}px`; mascotWrapper.style.bottom = `${mascotY}px`;
+            }
+            requestAnimationFrame(updateMascotPhysics);
+        }
+        updateMascotPhysics();
+
+        function applyDamage(iv) {
+            if (isDead) return;
+            const d = Math.floor(iv * 1.5); hunger -= d; energy -= d; mood -= d * 1.5;
+            hunger = Math.max(0, hunger); energy = Math.max(0, energy); mood = Math.max(0, mood);
+            updateMoodUI(); walkingMascot.classList.add('damage-flash'); statusBars.classList.add('bar-damage');
+            setTimeout(() => { walkingMascot.classList.remove('damage-flash'); statusBars.classList.remove('bar-damage'); }, 250);
+        }
+
+        function handleMascotDragStart(e) {
+            if (isPaused) return; isDraggingMascot = true; isThrown = false; isPetting = false; isSleeping = false; isUsingLaptop = false; isEating = false; isGoingToSleep = false; isGoingToFood = false; isGoingToLaptop = false; isGoingToToy = null;
+            clearInterval(petHeartInterval); stopMascotMovement();
+            if(!isDead) { walkingMascot.style.transform = 'scaleX(1) scaleY(1)'; walkingMascot.style.top = '0px'; }
+            const c = e.touches ? e.touches[0] : e; mascotLMX = c.clientX; mascotLMY = c.clientY; mascotVx = 0; mascotVy = 0;
+            if(!e.touches) e.preventDefault();
+        }
+
+        function handleMascotDragMove(e) {
+            if (isDraggingMascot) {
+                const c = e.touches ? e.touches[0] : e;
+                const dx = c.clientX - mascotLMX; const dy = c.clientY - mascotLMY;
+                mascotVx = dx * 0.6; mascotVy = -dy * 0.6;
+                mascotLMX = c.clientX; mascotLMY = c.clientY;
+                mascotX += dx; mascotY -= dy;
+                const maxMX = walkArea.clientWidth - 40; const maxMY = walkArea.clientHeight - 40;
+                mascotX = Math.max(0, Math.min(mascotX, maxMX)); mascotY = Math.max(6, Math.min(mascotY, maxMY));
+                mascotWrapper.style.left = `${mascotX}px`; mascotWrapper.style.bottom = `${mascotY}px`;
+            }
+        }
+
+        function handleMascotDragEnd() {
+            if (isDraggingMascot) {
+                isDraggingMascot = false;
+                const areaWidth = walkArea.clientWidth;
+                const bedCenterX = areaWidth - 87.5; const mascotCenterX = mascotX + 20;
+                if (energy < 50 && Math.abs(mascotCenterX - bedCenterX) < 40 && mascotY < 20) {
+                    isThrown = false; startSleepingSequence(true);
+                } else if (Math.abs(mascotCenterX - 24) < 40 && mascotY < 20 && hasLaptop) {
+                    isThrown = false; startLaptopSequence(true);
+                } else {
+                    isThrown = true;
+                }
+            }
+        }
+
+        mascotWrapper.addEventListener('mousedown', handleMascotDragStart);
+        mascotWrapper.addEventListener('touchstart', handleMascotDragStart, {passive: true});
+        mascotWrapper.addEventListener('dblclick', () => { if (isDead) reviveMascot(); });
+        window.addEventListener('mousemove', handleMascotDragMove);
+        window.addEventListener('touchmove', handleMascotDragMove, {passive: true});
+        window.addEventListener('mouseup', handleMascotDragEnd);
+        window.addEventListener('touchend', handleMascotDragEnd);
+
+        function updateMoodUI() {
+            moodFill.style.width = `${mood}%`;
+            moodFill.style.background = mood > 50 ? '#FF008F' : (mood > 25 ? '#ffc107' : '#ff4d4d');
+        }
+        updateMoodUI(); updateShopUI();
+
+        const statusInterval = setInterval(() => {
+            if (isDead || isPaused) return;
+            addXp(1);
+            
+            // Laptop Mood Gain logic (1-3 mood per sec)
+            if (isUsingLaptop) {
+                mood += (Math.floor(Math.random() * 3) + 1);
+                mood = Math.min(100, mood);
+                updateMoodUI();
+            }
+
+            hunger -= 1.5; hunger = Math.max(0, hunger);
+            hungerFill.style.width = `${hunger}%`;
+            hungerFill.style.background = hunger > 50 ? '#1DB954' : (hunger > 25 ? '#ffc107' : '#ff4d4d');
+
+            if (!isSleeping && !isGoingToSleep && !isUsingLaptop && !isGoingToLaptop) {
+                energy -= (100 / 120); energy = Math.max(0, energy);
+                if (energy <= 0) { mood -= 1; mood = Math.max(0, mood); updateMoodUI(); if (hunger > 25 && !isThrown && !isDraggingMascot && !isPetting) forceWalkToBed(); }
+            } else if (isSleeping) {
+                energy += (100 / 15); energy = Math.min(100, energy);
+            }
+            energyFill.style.width = `${energy}%`;
+            energyFill.style.background = energy > 30 ? '#4da6ff' : '#ff4d4d';
+
+            if (hasAutoFeeder && hunger <= 50 && !isBowlFull && !isDead) { isBowlFull = true; foodBowl.classList.add('full'); }
+            if (hunger === 0) die();
+            else if (hunger <= (hasAutoFeeder ? 50 : 25) && isBowlFull && !isGoingToFood && !isEating && !isThrown && !isDraggingMascot && !isPetting) { if (isSleeping || isGoingToSleep) wakeUpEarly(); forceWalkToFood(); }
+        }, 1000);
+
+        function wakeUpEarly() { isSleeping = false; isGoingToSleep = false; isUsingLaptop = false; isGoingToLaptop = false; clearTimeout(walkTimeout); walkingMascot.style.transform = 'scaleX(1) rotate(0deg) scaleY(1)'; walkingMascot.style.top = '0px'; }
+
+        function die() {
+            isDead = true; isSleeping = false; isPetting = false; isUsingLaptop = false; stopMascotMovement();
+            const sx = (walkingMascot.style.transform || '').includes('-1') ? '-1' : '1';
+            walkingMascot.style.transform = `scaleX(${sx}) scaleY(-1)`; walkingMascot.style.top = '14px'; walkingMascot.style.filter = 'grayscale(100%)';
+            statusBars.style.opacity = '0'; xpContainer.style.opacity = '0'; currencyUi.style.display = 'none'; shopContainer.style.display = 'none'; deathScreen.style.display = 'flex';
+        }
+
+        function reviveMascot() {
+            if (!isDead) return; isDead = false; hunger = 100; energy = 100; mood = 100; xp = 0; currentLevel = 0; currency = 0;
+            levelCountText.textContent = '0'; xpFill.style.width = '0%'; currencyCountText.textContent = '0';
+            hasBall = hasAutoFeeder = hasToyColor = hasGoobColor = hasPlushie = hasLaptop = hasAddy = false;
+            mascotPlushie.style.display = mascotLaptop.style.display = 'none';
+            walkingMascot.style.filter = 'none'; toyBall.el.style.filter = 'none'; toyBall.el.style.display = 'none'; autoFeederEl.style.display = 'none';
+            updateMoodUI(); updateShopUI();
+            document.querySelectorAll('.bs-note').forEach(n => n.remove()); activeNotes.length = 0;
+            deathScreen.style.display = 'none'; currencyUi.style.display = 'flex'; xpContainer.style.opacity = '1'; statusBars.style.opacity = '1';
+            walkingMascot.style.transform = 'scaleX(1) scaleY(1)'; walkingMascot.style.top = '0px'; mascotY = 6; mascotWrapper.style.bottom = '6px'; walkMascot();
+        }
+
+        foodBowlBtn.addEventListener('click', () => { if (!isBowlFull && !isDead) { isBowlFull = true; foodBowl.classList.add('full'); if (hunger <= 25 && !isGoingToFood && !isEating && !isThrown && !isDraggingMascot && !isPetting) { if (isSleeping || isGoingToSleep) wakeUpEarly(); forceWalkToFood(); } } });
+        function forceWalkToFood() { clearTimeout(walkTimeout); isGoingToFood = true; isGoingToToy = null; isGoingToSleep = false; isGoingToLaptop = false; walkMascot(); }
+        function forceWalkToBed() { clearTimeout(walkTimeout); isGoingToSleep = true; isGoingToFood = false; isGoingToToy = null; isGoingToLaptop = false; walkMascot(); }
+        function forceWalkToLaptop() { clearTimeout(walkTimeout); isGoingToLaptop = true; isGoingToFood = false; isGoingToToy = null; isGoingToSleep = false; walkMascot(); }
+
+        function startSleepingSequence(instant = false) {
+            const areaWidth = walkArea.clientWidth; const bedTargetX = areaWidth - 87.5 - 20;
+            isSleeping = true; isGoingToSleep = false;
+            if (instant) { mascotX = currentWalkX = bedTargetX; mascotWrapper.style.transition = 'none'; mascotWrapper.style.left = `${bedTargetX}px`; mascotWrapper.style.bottom = '6px'; }
+            walkingMascot.style.transition = 'transform 0.5s ease, top 0.5s ease';
+            walkingMascot.style.transform = 'translate(0px, 4px) scaleX(1) rotate(25deg) scaleY(0.85)';
+            setTimeout(() => { if (isDead || !isSleeping || isDraggingMascot || isThrown) return; isSleeping = false; mood = Math.min(100, mood + (hasPlushie ? 6 : 5)); updateMoodUI(); addXp(1); walkingMascot.style.transform = 'scaleX(1) rotate(0deg) scaleY(1)'; walkTimeout = setTimeout(walkMascot, 1500); }, 15000);
+        }
+
+        function startLaptopSequence(instant = false) {
+            const laptopTargetX = 4; // Laptop is at left:10, mascot centered there
+            isUsingLaptop = true; isGoingToLaptop = false;
+            if (instant) { mascotX = currentWalkX = laptopTargetX; mascotWrapper.style.transition = 'none'; mascotWrapper.style.left = `${laptopTargetX}px`; mascotWrapper.style.bottom = '6px'; }
+            
+            walkingMascot.style.transition = 'transform 0.3s ease';
+            walkingMascot.style.transform = 'scaleX(1) scaleY(0.9) translateY(2px)';
+            
+            const duration = (Math.floor(Math.random() * 8) + 3) * 1000;
+            setTimeout(() => {
+                if (isDead || !isUsingLaptop || isDraggingMascot || isThrown) return;
+                isUsingLaptop = false;
+                walkingMascot.style.transform = 'scaleX(1) scaleY(1)';
+                walkTimeout = setTimeout(walkMascot, 1000);
+            }, duration);
+        }
+
+        function walkMascot() {
+            if (isDead || isSleeping || isUsingLaptop || isThrown || isDraggingMascot || isPetting || isPaused || !walkArea || !mascotWrapper) return;
+            if (mood === 0 && !isGoingToFood && !isGoingToSleep) { walkTimeout = setTimeout(walkMascot, 2000); return; }
+            const areaWidth = walkArea.clientWidth; const mascotWidth = 40;
+            let targetX; let speed = 35;
+            const availableToys = [...activeNotes]; if (hasBall) availableToys.push(toyBall);
+
+            if (isGoingToSleep) { targetX = areaWidth - 87.5 - 20; speed = 25; }
+            else if (isGoingToFood) { targetX = areaWidth - mascotWidth - 35; speed = 45; }
+            else if (isGoingToLaptop) { targetX = 4; speed = 45; }
+            else if (hasLaptop && Math.random() < 0.2 && !isGoingToToy) { forceWalkToLaptop(); return; }
+            else if (availableToys.length > 0 && Math.random() < 0.4 && energy > 10) { isGoingToToy = availableToys[Math.floor(Math.random()*availableToys.length)]; targetX = Math.max(10, Math.min(isGoingToToy.x - 13, areaWidth - 130)); speed = 60; }
+            else { targetX = Math.random() * (areaWidth - 140) + 10; isGoingToToy = null; }
+
+            const distance = Math.abs(targetX - currentWalkX); const duration = Math.max(distance / speed, 0.5);
+            walkingMascot.style.transform = targetX > currentWalkX ? 'scaleX(-1)' : 'scaleX(1)';
+            mascotWrapper.style.transition = `left ${duration}s linear`; mascotWrapper.style.left = `${targetX}px`; mascotWrapper.style.bottom = '6px';
+            walkingMascot.classList.add('is-walking'); currentWalkX = targetX;
+
+            walkTimeout = setTimeout(() => {
+                if (isDead || isDraggingMascot || isThrown || isPetting || isPaused) return;
+                walkingMascot.classList.remove('is-walking');
+                if (isGoingToSleep) startSleepingSequence(false);
+                else if (isGoingToLaptop) startLaptopSequence(false);
+                else if (isGoingToFood) {
+                    if (isBowlFull) {
+                        isEating = true; isGoingToFood = false; walkingMascot.style.transform = 'scaleX(-1)';
+                        setTimeout(() => { if (isDead || isDraggingMascot || isThrown || isPaused) return; isBowlFull = false; foodBowl.classList.remove('full'); hunger = 100; hungerFill.style.width = '100%'; hungerFill.style.background = '#1DB954'; mood = Math.min(100, mood+5); updateMoodUI(); addXp(1); isEating = false; walkTimeout = setTimeout(walkMascot, 1500); }, 2000);
+                    } else { isGoingToFood = false; walkTimeout = setTimeout(walkMascot, 1000); }
+                } else if (isGoingToToy) {
+                    const fr = walkingMascot.style.transform.includes('-1'); isGoingToToy.vx = fr ? 12 : -12; isGoingToToy.vy = Math.random()*6+6; isGoingToToy.kickTime = Date.now();
+                    energy = Math.max(0, energy-8); mood = Math.min(100, mood+10); updateMoodUI(); addXp(1); isGoingToToy = null; walkTimeout = setTimeout(walkMascot, 1000);
+                } else walkTimeout = setTimeout(walkMascot, Math.random()*4000 + 1500);
+            }, duration * 1000);
+        }
+
+        setTimeout(walkMascot, 1500);
     </script>
 </body>
 </html>
