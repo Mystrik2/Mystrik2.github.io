@@ -16,7 +16,6 @@
             --accent: #ffc107;          /* Yellow accent */
             --link-color: #4da6ff;      /* Light blue for links */
             --link-hover: #7ec2ff;
-            --market-accent: #ff4d4d;   /* Red for Black Market */
         }
 
         /* === GLOBAL STYLES === */
@@ -129,7 +128,7 @@
         .mascot-container {
             position: absolute;
             left: 0;
-            bottom: 6px; 
+            bottom: 6px; /* Shifted down to new floor */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -282,23 +281,6 @@
             pointer-events: none;
             z-index: 4;
             display: none; /* Hidden until bought */
-        }
-
-        /* === LAPTOP === */
-        .mascot-laptop {
-            position: absolute;
-            left: 10px;
-            bottom: 6px;
-            width: 28px;
-            height: auto;
-            z-index: 3;
-            cursor: pointer;
-            display: none; /* Hidden until bought */
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
-            transition: transform 0.2s;
-        }
-        .mascot-laptop:hover {
-            transform: scale(1.1);
         }
 
         /* === FOOD BOWL === */
@@ -457,6 +439,7 @@
             overflow-y: auto;
         }
         
+        /* Custom scrollbar for shop */
         .shop-window::-webkit-scrollbar {
             width: 6px;
         }
@@ -512,26 +495,6 @@
             align-items: center;
             font-weight: bold;
             color: #00bfff;
-        }
-
-        /* Black Market Style */
-        .market-window {
-            background: #0f0b0b;
-            border-color: #3d1414;
-        }
-        .market-title {
-            color: #ff4d4d;
-            border-color: #3d1414;
-        }
-        .market-item-btn {
-            background: rgba(255, 77, 77, 0.05);
-            border-color: #ff4d4d;
-        }
-        .market-item-btn:hover:not(:disabled) {
-            background: rgba(255, 77, 77, 0.2);
-        }
-        .market-item-cost {
-            color: #ff4d4d;
         }
 
         /* === COLOR PICKER UI === */
@@ -1115,7 +1078,7 @@
             .nav-walk-area { width: 100%; margin-left: 0; height: 50px; margin-top: 5px; }
             .gallery-header { flex-direction: column; align-items: flex-start; }
             .shop-container { left: 5px; top: -20px; } 
-            .xp-container { bottom: -10px; left: 15px; } 
+            .xp-container { bottom: -10px; left: 15px; } /* Updated for mobile left alignment */
         }
     </style>
 </head>
@@ -1149,14 +1112,7 @@
                 <button id="shop-toggle-btn" class="shop-toggle-btn">🛒 Shop</button>
                 <div class="shop-window" id="shop-window">
                     <div class="shop-title" id="shop-title">Item Shop</div>
-                </div>
-            </div>
-
-            <!-- Black Market UI (Laptop Right Click) -->
-            <div class="shop-container no-select" id="market-container" style="display:none; left:10px;">
-                <div class="shop-window market-window active" id="market-window">
-                    <div class="shop-title market-title">Black Market</div>
-                    <!-- Items populated via JS -->
+                    <!-- Items populated via JS based on level -->
                 </div>
             </div>
 
@@ -1177,9 +1133,6 @@
             <div class="mascot-bed no-select" id="mascot-bed" title="Mascot Bed">
                 <img src="https://f2.toyhou.se/file/f2-toyhou-se/thumbnails/115040613_3Za.png" alt="Plushie" class="mascot-plushie" id="mascot-plushie">
             </div>
-
-            <!-- Laptop Item -->
-            <img src="https://imgs.search.brave.com/0OeOVhQyccw1fz6Gs6s65k78BBewO0By_tpaqrjt2XY/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9lbW9q/aWdyYXBoLm9yZy9t/ZWRpYS9taWNyb3Nv/ZnQvbGFwdG9wXzFm/NGJiLnBuZw" alt="Laptop" class="mascot-laptop no-select" id="mascot-laptop" draggable="false">
 
             <div class="mascot-container no-select" id="mascot-wrapper" title="You can pick me up or pet me!">
                 <img src="https://f2.toyhou.se/file/f2-toyhou-se/images/109037807_cPMFTHIKezVdr8U.png" alt="Walking Mascot" class="walking-mascot no-select" id="walking-mascot" draggable="false">
@@ -1536,10 +1489,6 @@
         
         const mascotPlushie = document.getElementById('mascot-plushie');
         const mascotBed = document.getElementById('mascot-bed');
-        const mascotLaptop = document.getElementById('mascot-laptop');
-        
-        const marketContainer = document.getElementById('market-container');
-        const marketWindow = document.getElementById('market-window');
 
         // Color Picker UI
         const colorPickerPopup = document.getElementById('color-picker-popup');
@@ -1557,10 +1506,8 @@
         let isDead = false;
         let isEating = false;
         let isSleeping = false;
-        let isUsingLaptop = false;
         let isGoingToSleep = false;
         let isGoingToFood = false;
-        let isGoingToLaptop = false;
         let isGoingToToy = null;
         let isPetting = false;
         let isBowlFull = false;
@@ -1576,20 +1523,12 @@
         const xpFill = document.getElementById('xp-fill');
 
         function getMaxXp(lvl) {
-            return 20; 
+            return 5; // Flat 5 XP per level for testing
         }
 
         function addXp(amount) {
             if (isDead) return;
-            
-            // Effect of Laptop / Addy
-            let multiplier = 1;
-            if (isUsingLaptop) {
-                multiplier = hasAddy ? 0.5 : 0;
-            }
-
-            xp += (amount * multiplier);
-            
+            xp += amount;
             let leveledUp = false;
             while (xp >= getMaxXp(currentLevel)) {
                 xp -= getMaxXp(currentLevel);
@@ -1600,8 +1539,12 @@
             xpFill.style.width = `${(xp / getMaxXp(currentLevel)) * 100}%`;
             
             if (leveledUp) {
-                updateShopUI();
-                if (Math.random() < 0.067) dropNote(true);
+                updateShopUI(); // Unlock things dynamically
+                
+                // 6.7% chance to drop a shiny golden note on level up!
+                if (Math.random() < 0.067) {
+                    dropNote(true);
+                }
             }
         }
 
@@ -1616,6 +1559,7 @@
             
             if (mascotWrapper.style.transition !== 'none') {
                 mascotX = parseFloat(getComputedStyle(mascotWrapper).left) || 0;
+                // Clamp mascotY to floor when walking
                 if (!isThrown && !isDraggingMascot) mascotY = 6;
                 else mascotY = parseFloat(getComputedStyle(mascotWrapper).bottom) || 6;
                 currentWalkX = mascotX;
@@ -1632,9 +1576,8 @@
         let hasToyColor = false;
         let hasGoobColor = false;
         let hasPlushie = false;
-        let hasLaptop = false;
-        let hasAddy = false;
 
+        // Dynamic buttons generated in JS
         const shopBtnBall = document.createElement('button');
         shopBtnBall.className = 'shop-item-btn';
         
@@ -1650,13 +1593,6 @@
         const shopBtnPlushie = document.createElement('button');
         shopBtnPlushie.className = 'shop-item-btn';
 
-        const shopBtnLaptop = document.createElement('button');
-        shopBtnLaptop.className = 'shop-item-btn';
-
-        // Black Market Items
-        const marketBtnAddy = document.createElement('button');
-        marketBtnAddy.className = 'shop-item-btn market-item-btn';
-
         shopToggleBtn.addEventListener('click', (e) => {
             if (!isDead) shopWindow.classList.toggle('active');
             e.stopPropagation();
@@ -1666,48 +1602,44 @@
             if (!shopContainer.contains(e.target)) {
                 shopWindow.classList.remove('active');
             }
-            if (!marketContainer.contains(e.target)) {
-                marketContainer.style.display = 'none';
-            }
-        });
-
-        // Laptop Right Click for Black Market
-        mascotLaptop.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            if (isDead) return;
-            marketContainer.style.display = 'block';
-            updateShopUI(); // Refresh market buttons
         });
 
         function updateShopUI() {
             if (isDead) {
                 shopContainer.style.display = 'none';
                 shopWindow.classList.remove('active');
-                marketContainer.style.display = 'none';
             } else {
                 shopContainer.style.display = 'block';
                 
+                // Requirements set to 0 to unlock everything at lvl 0
                 const shopItems = [
                     { btn: shopBtnBall, has: hasBall, req: 0, name: 'Toy Ball' },
                     { btn: shopBtnFeeder, has: hasAutoFeeder, req: 0, name: 'Auto-Feeder' },
                     { btn: shopBtnToyColor, has: hasToyColor, req: 0, name: 'Toy Paint' },
                     { btn: shopBtnGoobColor, has: hasGoobColor, req: 0, name: 'Goob Paint' },
-                    { btn: shopBtnPlushie, has: hasPlushie, req: 0, name: 'Bed Plushie' },
-                    { btn: shopBtnLaptop, has: hasLaptop, req: 0, name: 'Laptop' }
+                    { btn: shopBtnPlushie, has: hasPlushie, req: 0, name: 'Bed Plushie' }
                 ];
 
+                // Clear current items (preserve title)
                 Array.from(shopWindow.children).forEach(c => {
                     if (c.id !== 'shop-title') shopWindow.removeChild(c);
                 });
 
+                // 1. Add available items & level locked items
                 shopItems.forEach(item => {
                     if (!item.has) {
-                        item.btn.disabled = currentLevel < item.req;
-                        item.btn.innerHTML = `<span>${item.name}</span><span class="shop-item-cost">${currentLevel < item.req ? 'Lv.'+item.req : 'Free'}</span>`;
+                        if (currentLevel < item.req) {
+                            item.btn.disabled = true;
+                            item.btn.innerHTML = `<span>${item.name}</span><span class="shop-item-cost" style="color:#ff4d4d; font-size:0.75rem;">Lv. ${item.req}</span>`;
+                        } else {
+                            item.btn.disabled = false;
+                            item.btn.innerHTML = `<span>${item.name}</span><span class="shop-item-cost">Free</span>`;
+                        }
                         shopWindow.appendChild(item.btn);
                     }
                 });
 
+                // 2. Append Sold items last (so they sit at the bottom)
                 shopItems.forEach(item => {
                     if (item.has) {
                         item.btn.disabled = true;
@@ -1715,46 +1647,79 @@
                         shopWindow.appendChild(item.btn);
                     }
                 });
-
-                // Update Market Items
-                Array.from(marketWindow.children).forEach(c => {
-                    if (c.classList.contains('market-item-btn')) marketWindow.removeChild(c);
-                });
-
-                if (!hasAddy) {
-                    marketBtnAddy.disabled = currency < 100;
-                    marketBtnAddy.innerHTML = `<span>Addy</span><span class="shop-item-cost market-item-cost">100 <div class="currency-icon" style="transform: scale(0.6); margin-left: 2px; background:#ff4d4d;"></div></span>`;
-                    marketWindow.appendChild(marketBtnAddy);
-                } else {
-                    marketBtnAddy.disabled = true;
-                    marketBtnAddy.innerHTML = `<span>Addy</span><span class="shop-item-cost market-item-cost">Owned</span>`;
-                    marketWindow.appendChild(marketBtnAddy);
-                }
             }
         }
 
-        shopBtnBall.addEventListener('click', () => { if (!hasBall && !isDead) { hasBall = true; toyBall.el.style.display = 'block'; updateShopUI(); } });
-        shopBtnFeeder.addEventListener('click', () => { if (!hasAutoFeeder && !isDead) { hasAutoFeeder = true; autoFeederEl.style.display = 'block'; updateShopUI(); } });
-        shopBtnToyColor.addEventListener('click', () => { if (!hasToyColor && !isDead) { hasToyColor = true; updateShopUI(); } });
-        shopBtnGoobColor.addEventListener('click', () => { if (!hasGoobColor && !isDead) { hasGoobColor = true; updateShopUI(); } });
-        shopBtnPlushie.addEventListener('click', () => { if (!hasPlushie && !isDead) { hasPlushie = true; mascotPlushie.style.display = 'block'; updateShopUI(); } });
-        shopBtnLaptop.addEventListener('click', () => { if (!hasLaptop && !isDead) { hasLaptop = true; mascotLaptop.style.display = 'block'; updateShopUI(); } });
-
-        marketBtnAddy.addEventListener('click', () => {
-            if (currency >= 100 && !hasAddy && !isDead) {
-                currency -= 100;
-                currencyCountText.textContent = currency;
-                hasAddy = true;
+        shopBtnBall.addEventListener('click', () => {
+            if (currentLevel >= 0 && !hasBall && !isDead) {
+                hasBall = true;
+                toyBall.el.style.display = 'block';
+                toyBall.x = currentWalkX + 20; 
+                toyBall.y = 40;
+                toyBall.vx = 2;
+                toyBall.vy = 4;
                 updateShopUI();
             }
         });
+
+        shopBtnFeeder.addEventListener('click', () => {
+            if (currentLevel >= 0 && !hasAutoFeeder && !isDead) {
+                hasAutoFeeder = true;
+                autoFeederEl.style.display = 'block';
+                updateShopUI();
+            }
+        });
+
+        shopBtnToyColor.addEventListener('click', () => {
+            if (currentLevel >= 0 && !hasToyColor && !isDead) {
+                hasToyColor = true;
+                updateShopUI();
+            }
+        });
+
+        shopBtnGoobColor.addEventListener('click', () => {
+            if (currentLevel >= 0 && !hasGoobColor && !isDead) {
+                hasGoobColor = true;
+                updateShopUI();
+            }
+        });
+
+        shopBtnPlushie.addEventListener('click', () => {
+            if (currentLevel >= 0 && !hasPlushie && !isDead) {
+                hasPlushie = true;
+                mascotPlushie.style.display = 'block';
+                updateShopUI();
+            }
+        });
+
+        // Plushie Heart Loop
+        setInterval(() => {
+            if (isSleeping && hasPlushie && !isPaused && !isDead) {
+                const heart = document.createElement('div');
+                const colors = ['#00bfff', '#cba6f7', '#4da6ff', '#8839ef'];
+                heart.innerHTML = '💙';
+                if (Math.random() > 0.5) heart.innerHTML = '💜';
+                
+                heart.style.position = 'absolute';
+                heart.style.left = (Math.random() * 20 + 10) + 'px';
+                heart.style.bottom = '15px';
+                heart.style.fontSize = '12px';
+                heart.style.pointerEvents = 'none';
+                heart.style.animation = 'float-up 2s ease-out forwards';
+                heart.style.color = colors[Math.floor(Math.random() * colors.length)];
+                mascotBed.appendChild(heart);
+                setTimeout(() => heart.remove(), 2000);
+            }
+        }, 1000);
 
         // --- COLOR CUSTOMIZER / POPUP LOGIC ---
         function openColorPicker(el, clientX, clientY) {
             isPaused = true;
             stopMascotMovement();
             selectedColorEntity = el;
+            
             hueSlider.value = el.dataset.hue || 0;
+            
             colorPickerPopup.style.left = `${Math.min(clientX + 10, window.innerWidth - 220)}px`;
             colorPickerPopup.style.top = `${Math.min(clientY + 10, window.innerHeight - 150)}px`;
             colorPickerPopup.classList.add('active');
@@ -1772,58 +1737,92 @@
             colorPickerPopup.classList.remove('active');
             selectedColorEntity = null;
             isPaused = false;
-            if (!isDead && !isDraggingMascot && !isThrown && !isPetting && !isSleeping && !isUsingLaptop) {
+            if (!isDead && !isDraggingMascot && !isThrown && !isPetting && !isSleeping) {
                 walkTimeout = setTimeout(walkMascot, 500); 
             }
         });
 
+        // Right-click listeners
         mascotWrapper.addEventListener('contextmenu', (e) => {
             if (!hasGoobColor || isDead) return;
             e.preventDefault();
             openColorPicker(walkingMascot, e.clientX, e.clientY);
         });
 
-        // --- TOY PHYSICS ---
+        // --- GENERIC DRAG & PHYSICS FOR TOYS (BALL & NOTES) ---
         const draggables = [];
         const activeNotes = [];
-        const toyBall = { el: document.getElementById('toy-ball'), isBall: true, x: 150, y: 6, vx: 0, vy: 0, rot: 0 };
-        toyBall.el.addEventListener('contextmenu', (e) => { if (!hasToyColor || isDead) return; e.preventDefault(); openColorPicker(toyBall.el, e.clientX, e.clientY); });
+        
+        const toyBall = {
+            el: document.getElementById('toy-ball'),
+            isBall: true,
+            x: 150, y: 6, vx: 0, vy: 0, rot: 0
+        };
+
+        toyBall.el.addEventListener('contextmenu', (e) => {
+            if (!hasToyColor || isDead) return;
+            e.preventDefault();
+            openColorPicker(toyBall.el, e.clientX, e.clientY);
+        });
 
         function makeDraggable(obj, onDragEndCallback) {
             obj.isDragging = false;
             obj.dragMoved = false;
+            
             obj.onStart = (e) => {
                 if (isDead || isPaused) return;
                 if (obj.isBall && !hasBall) return;
+                
                 obj.isDragging = true;
                 obj.dragMoved = false;
-                const c = e.touches ? e.touches[0] : e;
-                obj.startX = c.clientX; obj.startY = c.clientY;
-                obj.lastMouseX = obj.startX; obj.lastMouseY = obj.startY;
+                obj.startX = e.touches ? e.touches[0].clientX : e.clientX;
+                obj.startY = e.touches ? e.touches[0].clientY : e.clientY;
+                obj.lastMouseX = obj.startX;
+                obj.lastMouseY = obj.startY;
                 obj.vx = 0; obj.vy = 0;
                 if (!e.touches) e.preventDefault();
             };
+            
             obj.onMove = (e) => {
                 if (!obj.isDragging) return;
-                const c = e.touches ? e.touches[0] : e;
-                const distMoved = Math.hypot(c.clientX - obj.startX, c.clientY - obj.startY);
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                
+                const distMoved = Math.hypot(clientX - obj.startX, clientY - obj.startY);
                 if (distMoved > 3) obj.dragMoved = true;
-                const dx = c.clientX - obj.lastMouseX; const dy = c.clientY - obj.lastMouseY;
-                obj.vx = dx * 0.6; obj.vy = -dy * 0.6;
-                obj.lastMouseX = c.clientX; obj.lastMouseY = c.clientY;
-                obj.x += dx; obj.y -= dy;
-                const mw = walkArea.clientWidth - 14 - 35;
-                obj.x = Math.max(10, Math.min(obj.x, mw - 85));
-                obj.y = Math.max(6, Math.min(obj.y, walkArea.clientHeight - 14));
+                
+                const deltaX = clientX - obj.lastMouseX;
+                const deltaY = clientY - obj.lastMouseY;
+                obj.vx = deltaX * 0.6; 
+                obj.vy = -deltaY * 0.6; 
+                obj.lastMouseX = clientX;
+                obj.lastMouseY = clientY;
+                
+                obj.x += deltaX;
+                obj.y -= deltaY; 
+                
+                const maxObjX = walkArea.clientWidth - 14 - 35; 
+                const maxObjY = walkArea.clientHeight - 14; 
+                obj.x = Math.max(10, Math.min(obj.x, maxObjX - 85)); 
+                obj.y = Math.max(6, Math.min(obj.y, maxObjY)); // Ground floor is 6
+                
                 obj.el.style.left = `${obj.x}px`;
                 obj.el.style.bottom = `${obj.y}px`;
             };
-            obj.onEnd = (e) => { if (obj.isDragging) { obj.isDragging = false; if (onDragEndCallback) onDragEndCallback(obj); } };
+            
+            obj.onEnd = (e) => {
+                if (!obj.isDragging) return;
+                obj.isDragging = false;
+                if (onDragEndCallback) onDragEndCallback(obj);
+            };
+            
             obj.el.addEventListener('mousedown', obj.onStart);
             obj.el.addEventListener('touchstart', obj.onStart, {passive: true});
             draggables.push(obj);
         }
+
         makeDraggable(toyBall);
+
         window.addEventListener('mousemove', (e) => draggables.forEach(d => d.onMove(e)));
         window.addEventListener('touchmove', (e) => draggables.forEach(d => d.onMove(e)), {passive: true});
         window.addEventListener('mouseup', (e) => draggables.forEach(d => d.onEnd(e)));
@@ -1831,120 +1830,380 @@
 
         function applyPhysics(obj, maxObjX, maxObjY, friction, bounce) {
             if (!obj.isDragging) {
-                obj.vy -= 0.6; obj.x += obj.vx; obj.y += obj.vy;
-                obj.vx *= 0.99; obj.vy *= 0.99;
-                if (obj.y <= 6) { obj.y = 6; obj.vy *= -bounce; obj.vx *= friction; if (Math.abs(obj.vy) < 1) obj.vy = 0; }
-                if (obj.x <= 10) { obj.x = 10; obj.vx *= -0.8; } else if (obj.x >= maxObjX) { obj.x = maxObjX; obj.vx *= -0.8; }
-                obj.el.style.left = `${obj.x}px`; obj.el.style.bottom = `${obj.y}px`;
+                obj.vy -= 0.6; 
+                obj.x += obj.vx;
+                obj.y += obj.vy;
+                obj.vx *= 0.99;
+                obj.vy *= 0.99;
+                
+                // Ground collision at 6
+                if (obj.y <= 6) {
+                    obj.y = 6;
+                    obj.vy *= -bounce; 
+                    obj.vx *= friction;  
+                    if (Math.abs(obj.vy) < 1) obj.vy = 0; 
+                    if (Math.abs(obj.vx) < 0.1) obj.vx = 0; 
+                } else if (obj.y >= maxObjY) {
+                    obj.y = maxObjY;
+                    obj.vy *= -0.5; 
+                }
+
+                if (obj.x <= 10) { 
+                    obj.x = 10;
+                    obj.vx *= -0.8; 
+                } else if (obj.x >= maxObjX) { 
+                    obj.x = maxObjX;
+                    obj.vx *= -0.8; 
+                }
+
+                obj.el.style.left = `${obj.x}px`;
+                obj.el.style.bottom = `${obj.y}px`;
                 if (!obj.isBall) obj.el.style.transform = `rotate(${obj.rot}deg)`;
-                const sc = obj.spawnTime && (Date.now() - obj.spawnTime < 1000);
-                const kc = obj.kickTime && (Date.now() - obj.kickTime < 500);
-                if (!sc && !kc && !isDead && !isDraggingMascot && !isThrown) {
-                    const mCX = mascotX + 20; const mCY = mascotY + 19;
-                    const bCX = obj.x + 7; const bCY = obj.y + 7;
-                    const dist = Math.hypot(bCX - mCX, bCY - mCY);
+
+                // Toy Collision with Mascot
+                const spawnCooldownActive = obj.spawnTime && (Date.now() - obj.spawnTime < 1000);
+                const kickCooldownActive = obj.kickTime && (Date.now() - obj.kickTime < 500); // Shorter immunity window
+                
+                if (!spawnCooldownActive && !kickCooldownActive && !isDead && !isDraggingMascot && !isThrown) {
+                    const mCenterX = mascotX + 20; 
+                    const mCenterY = mascotY + 19; 
+                    const bCenterX = obj.x + 7;
+                    const bCenterY = obj.y + 7;
+                    
+                    const dist = Math.hypot(bCenterX - mCenterX, bCenterY - mCenterY);
                     const speed = Math.hypot(obj.vx, obj.vy);
-                    if (dist < 22 && speed > 5) { applyDamage(speed); obj.vx *= -0.8; obj.vy *= -0.8; }
+                    
+                    if (dist < 22 && speed > 5) {
+                        applyDamage(speed);
+                        obj.vx *= -0.8;
+                        obj.vy *= -0.8;
+                        obj.x += obj.vx * 2;
+                        obj.y += obj.vy * 2;
+                    }
                 }
             }
         }
 
         function updatePhysicsLoop() {
-            if (!isPaused) {
-                const maxW = walkArea.clientWidth - 14 - 35 - 85; const maxH = walkArea.clientHeight - 14;
-                if (hasBall) applyPhysics(toyBall, maxW, maxH, 0.90, 0.75);
-                for (let i = activeNotes.length - 1; i >= 0; i--) applyPhysics(activeNotes[i], maxW, maxH, 0.85, 0.5);
+            if (isPaused) {
+                requestAnimationFrame(updatePhysicsLoop);
+                return;
+            }
+
+            const maxW = walkArea.clientWidth - 14 - 35 - 85; 
+            const maxH = walkArea.clientHeight - 14;
+
+            if (hasBall) applyPhysics(toyBall, maxW, maxH, 0.90, 0.75);
+            
+            for (let i = activeNotes.length - 1; i >= 0; i--) {
+                applyPhysics(activeNotes[i], maxW, maxH, 0.85, 0.5);
             }
             requestAnimationFrame(updatePhysicsLoop);
         }
         updatePhysicsLoop();
 
-        // --- NOTES ---
+        // --- CURRENCY (BEAT SABER NOTES) LOGIC ---
         setInterval(() => {
             if (isDead || mood === 0 || isPaused) return;
-            if (Math.random() < (mood / 100) * 0.5) dropNote(false); 
+            const dropChance = (mood / 100) * 0.5;
+            if (Math.random() < dropChance) dropNote(false); 
         }, 3000);
 
         function dropNote(isGolden = false) {
             const noteEl = document.createElement('div');
             noteEl.className = 'bs-note no-select';
-            if (isGolden) noteEl.classList.add('golden-note');
-            else noteEl.style.backgroundColor = `hsl(${Math.random()*360}, 100%, 50%)`;
+            
+            if (isGolden) {
+                noteEl.classList.add('golden-note');
+            } else {
+                const hue = Math.floor(Math.random() * 360);
+                noteEl.style.backgroundColor = `hsl(${hue}, 100%, 50%)`;
+            }
+            
             const rot = Math.floor(Math.random() * 4) * 90;
             noteEl.style.transform = `rotate(${rot}deg)`;
-            noteEl.addEventListener('contextmenu', (e) => { if (!hasToyColor || isDead || isGolden) return; e.preventDefault(); openColorPicker(noteEl, e.clientX, e.clientY); });
+            
+            noteEl.addEventListener('contextmenu', (e) => {
+                if (!hasToyColor || isDead || isGolden) return; // Prevent coloring golden notes
+                e.preventDefault();
+                openColorPicker(noteEl, e.clientX, e.clientY);
+            });
+
             walkArea.appendChild(noteEl);
-            const noteObj = { el: noteEl, isBall: false, isGolden, x: currentWalkX + 10, y: 45, vx: (Math.random()-0.5)*4, vy: Math.random()*2+2, rot, spawnTime: Date.now() };
+
+            const noteObj = {
+                el: noteEl,
+                isBall: false,
+                isGolden: isGolden,
+                x: currentWalkX + 10,
+                y: 45, // Drop from slightly up
+                vx: (Math.random() - 0.5) * 4,
+                vy: Math.random() * 2 + 2,
+                rot: rot,
+                spawnTime: Date.now() 
+            };
+
             activeNotes.push(noteObj);
-            makeDraggable(noteObj, (cn) => {
-                if (!cn.dragMoved) {
-                    currency += cn.isGolden ? 3 : 1;
+
+            makeDraggable(noteObj, (completedNote) => {
+                if (!completedNote.dragMoved) {
+                    const gain = completedNote.isGolden ? 3 : 1;
+                    currency += gain;
                     currencyCountText.textContent = currency;
-                    addXp(cn.isGolden ? 2 : 1);
-                    cn.el.remove();
-                    activeNotes.splice(activeNotes.indexOf(cn), 1);
-                    draggables.splice(draggables.indexOf(cn), 1);
+                    
+                    // Golden notes give 2 XP, normal notes give 1
+                    const xpGain = completedNote.isGolden ? 2 : 1;
+                    addXp(xpGain);
+                    
+                    completedNote.el.remove();
+                    const idx = activeNotes.indexOf(completedNote);
+                    if (idx > -1) activeNotes.splice(idx, 1);
+                    
+                    const dragIdx = draggables.indexOf(completedNote);
+                    if (dragIdx > -1) draggables.splice(dragIdx, 1);
                 }
             });
-            setTimeout(() => { if (noteEl.parentNode) { noteEl.remove(); activeNotes.splice(activeNotes.indexOf(noteObj), 1); draggables.splice(draggables.indexOf(noteObj), 1); } }, 20000);
+
+            setTimeout(() => { 
+                if (noteEl.parentNode) {
+                    noteEl.remove(); 
+                    const idx = activeNotes.indexOf(noteObj);
+                    if (idx > -1) activeNotes.splice(idx, 1);
+                    
+                    const dragIdx = draggables.indexOf(noteObj);
+                    if (dragIdx > -1) draggables.splice(dragIdx, 1);
+                }
+            }, 20000);
         }
 
-        // --- MASCOT PHYSICS ---
-        let mascotVx = 0; let mascotVy = 0; let isDraggingMascot = false; let isThrown = false; let mascotLMX = 0; let mascotLMY = 0;
-        function updateMascotPhysics() {
-            if (!isPaused && isThrown && !isDraggingMascot) {
-                mascotVy -= 0.6; mascotX += mascotVx; mascotY += mascotVy;
-                mascotVx *= 0.99; mascotVy *= 0.99;
-                if (mascotY <= 6) {
-                    mascotY = 6; if (Math.abs(mascotVy) > 4) applyDamage(Math.abs(mascotVy));
-                    mascotVy *= -0.4; mascotVx *= 0.8;
-                    if (Math.abs(mascotVy) < 1.5 && Math.abs(mascotVx) < 0.5) { isThrown = false; mascotVy = 0; mascotVx = 0; mascotY = 6; currentWalkX = mascotX; if (!isDead && !isPetting && !isSleeping && !isUsingLaptop) walkTimeout = setTimeout(walkMascot, 500); }
+        // --- PETTING LOGIC ---
+        let petWiggleCount = 0;
+        let lastPetX = null;
+        let petDirection = null; 
+        let petResetTimeout;
+        let petHeartInterval;
+
+        mascotWrapper.addEventListener('mousemove', (e) => {
+            if (isDraggingMascot || isThrown || isDead || isSleeping || isGoingToToy || isGoingToFood || isGoingToSleep || isPaused) return;
+
+            const currentX = e.clientX;
+            if (lastPetX !== null) {
+                const delta = currentX - lastPetX;
+                if (Math.abs(delta) > 2) {
+                    const dir = delta > 0 ? 1 : -1;
+                    if (petDirection !== null && dir !== petDirection) {
+                        petWiggleCount++;
+                        if (petWiggleCount >= 6 && !isPetting) {
+                            startPetting();
+                        }
+                    }
+                    petDirection = dir;
                 }
-                const maxMX = walkArea.clientWidth - 40; mascotX = Math.max(0, Math.min(mascotX, maxMX));
-                mascotWrapper.style.left = `${mascotX}px`; mascotWrapper.style.bottom = `${mascotY}px`;
+            }
+            lastPetX = currentX;
+
+            clearTimeout(petResetTimeout);
+            petResetTimeout = setTimeout(() => {
+                petWiggleCount = 0;
+                lastPetX = null;
+                petDirection = null;
+            }, 300);
+        });
+
+        function startPetting() {
+            if (isPetting) return;
+            isPetting = true;
+            
+            stopMascotMovement();
+
+            mood += 20;
+            if(mood > 100) mood = 100;
+            updateMoodUI();
+            addXp(1); // Gain XP
+
+            walkingMascot.style.animation = 'rock-pet 1.5s infinite ease-in-out';
+            
+            petHeartInterval = setInterval(() => {
+                const heart = document.createElement('div');
+                heart.innerHTML = '❤️';
+                heart.style.position = 'absolute';
+                heart.style.left = (Math.random() * 20 + 5) + 'px';
+                heart.style.bottom = '30px';
+                heart.style.fontSize = '14px';
+                heart.style.pointerEvents = 'none';
+                heart.style.animation = 'float-up 1s ease-out forwards';
+                mascotWrapper.appendChild(heart);
+                setTimeout(() => heart.remove(), 1000);
+            }, 400);
+
+            setTimeout(() => {
+                isPetting = false;
+                walkingMascot.style.animation = '';
+                clearInterval(petHeartInterval);
+                if (!isDead && !isDraggingMascot && !isThrown && !isPaused) walkMascot();
+            }, 3500);
+        }
+
+        // --- MASCOT PHYSICS (THROWING) LOGIC ---
+        let mascotVx = 0;
+        let mascotVy = 0;
+        let isDraggingMascot = false;
+        let isThrown = false;
+        let mascotLastMouseX = 0;
+        let mascotLastMouseY = 0;
+
+        function updateMascotPhysics() {
+            if (isPaused) {
+                requestAnimationFrame(updateMascotPhysics);
+                return;
+            }
+
+            if (isThrown && !isDraggingMascot) {
+                mascotVy -= 0.6; // Gravity
+                
+                mascotX += mascotVx;
+                mascotY += mascotVy;
+                
+                mascotVx *= 0.99;
+                mascotVy *= 0.99;
+                
+                const maxMascotX = walkArea.clientWidth - (mascotWrapper.clientWidth || 40);
+                const maxMascotY = walkArea.clientHeight - (mascotWrapper.clientHeight || 40);
+
+                // Floor collision
+                if (mascotY <= 6) {
+                    mascotY = 6;
+                    if (Math.abs(mascotVy) > 4) applyDamage(Math.abs(mascotVy));
+                    
+                    mascotVy *= -0.4; 
+                    mascotVx *= 0.8;  
+
+                    if (Math.abs(mascotVy) < 1.5 && Math.abs(mascotVx) < 0.5) {
+                        isThrown = false;
+                        mascotVy = 0;
+                        mascotVx = 0;
+                        mascotY = 6;
+                        mascotWrapper.style.bottom = '6px';
+                        currentWalkX = mascotX;
+                        if (!isDead && !isPetting && !isSleeping) {
+                            walkTimeout = setTimeout(walkMascot, 500);
+                        }
+                    }
+                } 
+                else if (mascotY >= maxMascotY) {
+                    mascotY = maxMascotY;
+                    mascotVy *= -0.5;
+                }
+
+                if (mascotX <= 0) {
+                    mascotX = 0;
+                    mascotVx *= -0.8;
+                } else if (mascotX >= maxMascotX) {
+                    mascotX = maxMascotX;
+                    mascotVx *= -0.8;
+                }
+
+                mascotWrapper.style.left = `${mascotX}px`;
+                mascotWrapper.style.bottom = `${mascotY}px`;
             }
             requestAnimationFrame(updateMascotPhysics);
         }
         updateMascotPhysics();
 
-        function applyDamage(iv) {
+        function applyDamage(impactVelocity) {
             if (isDead) return;
-            const d = Math.floor(iv * 1.5); hunger -= d; energy -= d; mood -= d * 1.5;
-            hunger = Math.max(0, hunger); energy = Math.max(0, energy); mood = Math.max(0, mood);
-            updateMoodUI(); walkingMascot.classList.add('damage-flash'); statusBars.classList.add('bar-damage');
-            setTimeout(() => { walkingMascot.classList.remove('damage-flash'); statusBars.classList.remove('bar-damage'); }, 250);
+            const damage = Math.floor(impactVelocity * 1.5);
+            hunger -= damage;
+            energy -= damage;
+            mood -= damage * 1.5; 
+            if (hunger < 0) hunger = 0;
+            if (energy < 0) energy = 0;
+            if (mood < 0) mood = 0;
+            
+            updateMoodUI();
+
+            walkingMascot.classList.add('damage-flash');
+            statusBars.classList.add('bar-damage');
+            
+            setTimeout(() => {
+                walkingMascot.classList.remove('damage-flash');
+                statusBars.classList.remove('bar-damage');
+            }, 250);
         }
 
         function handleMascotDragStart(e) {
-            if (isPaused) return; isDraggingMascot = true; isThrown = false; isPetting = false; isSleeping = false; isUsingLaptop = false; isEating = false; isGoingToSleep = false; isGoingToFood = false; isGoingToLaptop = false; isGoingToToy = null;
-            clearInterval(petHeartInterval); stopMascotMovement();
-            if(!isDead) { walkingMascot.style.transform = 'scaleX(1) scaleY(1)'; walkingMascot.style.top = '0px'; }
-            const c = e.touches ? e.touches[0] : e; mascotLMX = c.clientX; mascotLMY = c.clientY; mascotVx = 0; mascotVy = 0;
+            if (isPaused) return;
+
+            isDraggingMascot = true;
+            isThrown = false;
+            isPetting = false;
+            isSleeping = false;
+            isEating = false;
+            isGoingToSleep = false;
+            isGoingToFood = false;
+            isGoingToToy = null;
+
+            clearInterval(petHeartInterval);
+            
+            stopMascotMovement();
+            
+            if(!isDead) {
+                walkingMascot.style.transform = 'scaleX(1) scaleY(1)';
+                walkingMascot.style.top = '0px';
+            }
+
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            mascotLastMouseX = clientX;
+            mascotLastMouseY = clientY;
+            mascotVx = 0;
+            mascotVy = 0;
+
             if(!e.touches) e.preventDefault();
         }
 
         function handleMascotDragMove(e) {
             if (isDraggingMascot) {
-                const c = e.touches ? e.touches[0] : e;
-                const dx = c.clientX - mascotLMX; const dy = c.clientY - mascotLMY;
-                mascotVx = dx * 0.6; mascotVy = -dy * 0.6;
-                mascotLMX = c.clientX; mascotLMY = c.clientY;
-                mascotX += dx; mascotY -= dy;
-                const maxMX = walkArea.clientWidth - 40; const maxMY = walkArea.clientHeight - 40;
-                mascotX = Math.max(0, Math.min(mascotX, maxMX)); mascotY = Math.max(6, Math.min(mascotY, maxMY));
-                mascotWrapper.style.left = `${mascotX}px`; mascotWrapper.style.bottom = `${mascotY}px`;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                
+                const deltaX = clientX - mascotLastMouseX;
+                const deltaY = clientY - mascotLastMouseY;
+                
+                mascotVx = deltaX * 0.6; 
+                mascotVy = -deltaY * 0.6; 
+                
+                mascotLastMouseX = clientX;
+                mascotLastMouseY = clientY;
+
+                mascotX += deltaX; 
+                mascotY -= deltaY; 
+                
+                const maxMascotX = walkArea.clientWidth - (mascotWrapper.clientWidth || 40);
+                const maxMascotY = walkArea.clientHeight - (mascotWrapper.clientHeight || 40);
+                
+                mascotX = Math.max(0, Math.min(mascotX, maxMascotX));
+                mascotY = Math.max(6, Math.min(mascotY, maxMascotY)); // Adjusted ground
+                
+                mascotWrapper.style.left = `${mascotX}px`;
+                mascotWrapper.style.bottom = `${mascotY}px`;
             }
         }
 
         function handleMascotDragEnd() {
             if (isDraggingMascot) {
                 isDraggingMascot = false;
+                
+                // Check if placed on bed while tired (< 50% energy)
                 const areaWidth = walkArea.clientWidth;
-                const bedCenterX = areaWidth - 87.5; const mascotCenterX = mascotX + 20;
+                // Bed is at right: 65px, width 45px. Center is areaWidth - 65 - 22.5
+                const bedCenterX = areaWidth - 87.5;
+                const mascotCenterX = mascotX + 20;
+
+                // If placed directly on or very close to the bed
                 if (energy < 50 && Math.abs(mascotCenterX - bedCenterX) < 40 && mascotY < 20) {
-                    isThrown = false; startSleepingSequence(true);
-                } else if (Math.abs(mascotCenterX - 24) < 40 && mascotY < 20 && hasLaptop) {
-                    isThrown = false; startLaptopSequence(true);
+                    isThrown = false;
+                    startSleepingSequence(true); // Instant sleep
                 } else {
                     isThrown = true;
                 }
@@ -1953,7 +2212,12 @@
 
         mascotWrapper.addEventListener('mousedown', handleMascotDragStart);
         mascotWrapper.addEventListener('touchstart', handleMascotDragStart, {passive: true});
-        mascotWrapper.addEventListener('dblclick', () => { if (isDead) reviveMascot(); });
+        
+        // Revive via Double Click
+        mascotWrapper.addEventListener('dblclick', () => {
+            if (isDead) reviveMascot();
+        });
+
         window.addEventListener('mousemove', handleMascotDragMove);
         window.addEventListener('touchmove', handleMascotDragMove, {passive: true});
         window.addEventListener('mouseup', handleMascotDragEnd);
@@ -1961,124 +2225,335 @@
 
         function updateMoodUI() {
             moodFill.style.width = `${mood}%`;
-            moodFill.style.background = mood > 50 ? '#FF008F' : (mood > 25 ? '#ffc107' : '#ff4d4d');
+            if (mood > 50) moodFill.style.background = '#FF008F'; 
+            else if (mood > 25) moodFill.style.background = '#ffc107'; 
+            else moodFill.style.background = '#ff4d4d'; 
         }
-        updateMoodUI(); updateShopUI();
+        
+        updateMoodUI();
+        updateShopUI(); 
 
+        // Status Loop
         const statusInterval = setInterval(() => {
             if (isDead || isPaused) return;
-            addXp(1);
-            
-            // Laptop Mood Gain logic (1-3 mood per sec)
-            if (isUsingLaptop) {
-                mood += (Math.floor(Math.random() * 3) + 1);
-                mood = Math.min(100, mood);
-                updateMoodUI();
-            }
 
-            hunger -= 1.5; hunger = Math.max(0, hunger);
+            addXp(1); // Passive 1 XP per second
+
+            hunger -= 1.5; 
+            if (hunger < 0) hunger = 0;
+
             hungerFill.style.width = `${hunger}%`;
-            hungerFill.style.background = hunger > 50 ? '#1DB954' : (hunger > 25 ? '#ffc107' : '#ff4d4d');
+            if (hunger > 50) hungerFill.style.background = '#1DB954';
+            else if (hunger > 25) hungerFill.style.background = '#ffc107';
+            else hungerFill.style.background = '#ff4d4d';
 
-            if (!isSleeping && !isGoingToSleep && !isUsingLaptop && !isGoingToLaptop) {
-                energy -= (100 / 120); energy = Math.max(0, energy);
-                if (energy <= 0) { mood -= 1; mood = Math.max(0, mood); updateMoodUI(); if (hunger > 25 && !isThrown && !isDraggingMascot && !isPetting) forceWalkToBed(); }
+            if (!isSleeping && !isGoingToSleep) {
+                energy -= (100 / 120); 
+                if (energy <= 0) {
+                    energy = 0;
+                    mood -= 1; 
+                    if (mood < 0) mood = 0;
+                    updateMoodUI();
+
+                    if (hunger > 25 && !isThrown && !isDraggingMascot && !isPetting) {
+                        forceWalkToBed();
+                    }
+                }
             } else if (isSleeping) {
-                energy += (100 / 15); energy = Math.min(100, energy);
+                energy += (100 / 15); 
+                if (energy > 100) energy = 100;
             }
-            energyFill.style.width = `${energy}%`;
-            energyFill.style.background = energy > 30 ? '#4da6ff' : '#ff4d4d';
 
-            if (hasAutoFeeder && hunger <= 50 && !isBowlFull && !isDead) { isBowlFull = true; foodBowl.classList.add('full'); }
-            if (hunger === 0) die();
-            else if (hunger <= (hasAutoFeeder ? 50 : 25) && isBowlFull && !isGoingToFood && !isEating && !isThrown && !isDraggingMascot && !isPetting) { if (isSleeping || isGoingToSleep) wakeUpEarly(); forceWalkToFood(); }
+            energyFill.style.width = `${energy}%`;
+            if (energy > 30) energyFill.style.background = '#4da6ff';
+            else energyFill.style.background = '#ff4d4d'; 
+
+            if (hasAutoFeeder && hunger <= 50 && !isBowlFull && !isDead) {
+                isBowlFull = true;
+                foodBowl.classList.add('full');
+            }
+
+            const hungryThreshold = hasAutoFeeder ? 50 : 25;
+
+            if (hunger === 0) {
+                die();
+            } else if (hunger <= hungryThreshold && isBowlFull && !isGoingToFood && !isEating && !isThrown && !isDraggingMascot && !isPetting) {
+                if (isSleeping || isGoingToSleep) wakeUpEarly();
+                forceWalkToFood();
+            }
         }, 1000);
 
-        function wakeUpEarly() { isSleeping = false; isGoingToSleep = false; isUsingLaptop = false; isGoingToLaptop = false; clearTimeout(walkTimeout); walkingMascot.style.transform = 'scaleX(1) rotate(0deg) scaleY(1)'; walkingMascot.style.top = '0px'; }
+        function wakeUpEarly() {
+            isSleeping = false;
+            isGoingToSleep = false;
+            clearTimeout(walkTimeout);
+            walkingMascot.style.transform = 'scaleX(1) rotate(0deg) scaleY(1)';
+            walkingMascot.style.top = '0px';
+        }
 
         function die() {
-            isDead = true; isSleeping = false; isPetting = false; isUsingLaptop = false; stopMascotMovement();
-            const sx = (walkingMascot.style.transform || '').includes('-1') ? '-1' : '1';
-            walkingMascot.style.transform = `scaleX(${sx}) scaleY(-1)`; walkingMascot.style.top = '14px'; walkingMascot.style.filter = 'grayscale(100%)';
-            statusBars.style.opacity = '0'; xpContainer.style.opacity = '0'; currencyUi.style.display = 'none'; shopContainer.style.display = 'none'; deathScreen.style.display = 'flex';
+            isDead = true;
+            isSleeping = false;
+            isPetting = false;
+            
+            stopMascotMovement();
+            
+            const currentTransform = walkingMascot.style.transform || 'scaleX(1)';
+            const scaleX = currentTransform.includes('-1') ? '-1' : '1';
+            
+            walkingMascot.style.transform = `scaleX(${scaleX}) scaleY(-1)`;
+            walkingMascot.style.top = '14px'; 
+            walkingMascot.style.filter = 'grayscale(100%)';
+            statusBars.style.opacity = '0'; 
+            xpContainer.style.opacity = '0'; 
+            
+            currencyUi.style.display = 'none';
+            shopContainer.style.display = 'none';
+            shopWindow.classList.remove('active');
+            deathScreen.style.display = 'flex';
         }
 
         function reviveMascot() {
-            if (!isDead) return; isDead = false; hunger = 100; energy = 100; mood = 100; xp = 0; currentLevel = 0; currency = 0;
-            levelCountText.textContent = '0'; xpFill.style.width = '0%'; currencyCountText.textContent = '0';
-            hasBall = hasAutoFeeder = hasToyColor = hasGoobColor = hasPlushie = hasLaptop = hasAddy = false;
-            mascotPlushie.style.display = mascotLaptop.style.display = 'none';
-            walkingMascot.style.filter = 'none'; toyBall.el.style.filter = 'none'; toyBall.el.style.display = 'none'; autoFeederEl.style.display = 'none';
-            updateMoodUI(); updateShopUI();
-            document.querySelectorAll('.bs-note').forEach(n => n.remove()); activeNotes.length = 0;
-            deathScreen.style.display = 'none'; currencyUi.style.display = 'flex'; xpContainer.style.opacity = '1'; statusBars.style.opacity = '1';
-            walkingMascot.style.transform = 'scaleX(1) scaleY(1)'; walkingMascot.style.top = '0px'; mascotY = 6; mascotWrapper.style.bottom = '6px'; walkMascot();
+            if (!isDead) return;
+            isDead = false;
+            hunger = 100;
+            energy = 100;
+            mood = 100;
+            
+            // Reset XP system
+            xp = 0;
+            currentLevel = 0;
+            levelCountText.textContent = '0';
+            xpFill.style.width = '0%';
+
+            currency = 0; 
+            currencyCountText.textContent = '0';
+            hasBall = false;
+            hasAutoFeeder = false;
+            hasToyColor = false;
+            hasGoobColor = false;
+            hasPlushie = false;
+            mascotPlushie.style.display = 'none';
+
+            // Reset customized colors AND CSS Filters back to default
+            walkingMascot.dataset.hue = 0;
+            walkingMascot.style.filter = 'none';
+            toyBall.el.dataset.hue = 0;
+            toyBall.el.style.filter = 'none';
+
+            toyBall.el.style.display = 'none';
+            autoFeederEl.style.display = 'none';
+            updateMoodUI();
+            updateShopUI(); 
+            
+            document.querySelectorAll('.bs-note').forEach(n => n.remove());
+            activeNotes.length = 0; 
+
+            deathScreen.style.display = 'none';
+            currencyUi.style.display = 'flex';
+            xpContainer.style.opacity = '1';
+
+            const rays = document.createElement('div');
+            rays.style.position = 'absolute';
+            rays.style.left = '50%';
+            rays.style.top = '50%';
+            rays.style.width = '100px';
+            rays.style.height = '100px';
+            rays.style.marginLeft = '-50px';
+            rays.style.marginTop = '-50px';
+            rays.style.background = 'radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%)';
+            rays.style.pointerEvents = 'none';
+            rays.style.zIndex = '10';
+            rays.style.animation = 'rays-spin 1s ease-out forwards';
+            mascotWrapper.appendChild(rays);
+            setTimeout(() => rays.remove(), 1000);
+
+            statusBars.style.opacity = '1';
+            walkingMascot.style.transform = 'scaleX(1) scaleY(1)';
+            walkingMascot.style.top = '0px';
+            
+            isThrown = false;
+            mascotY = 6;
+            mascotWrapper.style.bottom = '6px';
+            walkMascot();
         }
 
-        foodBowlBtn.addEventListener('click', () => { if (!isBowlFull && !isDead) { isBowlFull = true; foodBowl.classList.add('full'); if (hunger <= 25 && !isGoingToFood && !isEating && !isThrown && !isDraggingMascot && !isPetting) { if (isSleeping || isGoingToSleep) wakeUpEarly(); forceWalkToFood(); } } });
-        function forceWalkToFood() { clearTimeout(walkTimeout); isGoingToFood = true; isGoingToToy = null; isGoingToSleep = false; isGoingToLaptop = false; walkMascot(); }
-        function forceWalkToBed() { clearTimeout(walkTimeout); isGoingToSleep = true; isGoingToFood = false; isGoingToToy = null; isGoingToLaptop = false; walkMascot(); }
-        function forceWalkToLaptop() { clearTimeout(walkTimeout); isGoingToLaptop = true; isGoingToFood = false; isGoingToToy = null; isGoingToSleep = false; walkMascot(); }
+        foodBowlBtn.addEventListener('click', () => {
+            if (!isBowlFull && !isDead) {
+                isBowlFull = true;
+                foodBowl.classList.add('full');
+                if (hunger <= 25 && !isGoingToFood && !isEating && !isThrown && !isDraggingMascot && !isPetting) {
+                    if (isSleeping || isGoingToSleep) wakeUpEarly();
+                    forceWalkToFood();
+                }
+            }
+        });
+
+        function forceWalkToFood() {
+            clearTimeout(walkTimeout);
+            isGoingToFood = true;
+            isGoingToToy = null;
+            isGoingToSleep = false;
+            walkMascot(); 
+        }
+
+        function forceWalkToBed() {
+            clearTimeout(walkTimeout);
+            isGoingToSleep = true;
+            isGoingToFood = false;
+            isGoingToToy = null;
+            walkMascot();
+        }
 
         function startSleepingSequence(instant = false) {
-            const areaWidth = walkArea.clientWidth; const bedTargetX = areaWidth - 87.5 - 20;
-            isSleeping = true; isGoingToSleep = false;
-            if (instant) { mascotX = currentWalkX = bedTargetX; mascotWrapper.style.transition = 'none'; mascotWrapper.style.left = `${bedTargetX}px`; mascotWrapper.style.bottom = '6px'; }
-            walkingMascot.style.transition = 'transform 0.5s ease, top 0.5s ease';
-            walkingMascot.style.transform = 'translate(0px, 4px) scaleX(1) rotate(25deg) scaleY(0.85)';
-            setTimeout(() => { if (isDead || !isSleeping || isDraggingMascot || isThrown) return; isSleeping = false; mood = Math.min(100, mood + (hasPlushie ? 6 : 5)); updateMoodUI(); addXp(1); walkingMascot.style.transform = 'scaleX(1) rotate(0deg) scaleY(1)'; walkTimeout = setTimeout(walkMascot, 1500); }, 15000);
-        }
+            const areaWidth = walkArea.clientWidth;
+            const mascotWidth = 40;
+            // Precise target: Center mascot on the bed (which is right:65px, width:45px)
+            const bedTargetX = areaWidth - 87.5 - (mascotWidth / 2);
+            
+            isSleeping = true;
+            isGoingToSleep = false;
+            
+            if (instant) {
+                mascotX = bedTargetX;
+                currentWalkX = bedTargetX;
+                mascotWrapper.style.transition = 'none';
+                mascotWrapper.style.left = `${bedTargetX}px`;
+                mascotWrapper.style.bottom = '6px';
+            }
 
-        function startLaptopSequence(instant = false) {
-            const laptopTargetX = 4; // Laptop is at left:10, mascot centered there
-            isUsingLaptop = true; isGoingToLaptop = false;
-            if (instant) { mascotX = currentWalkX = laptopTargetX; mascotWrapper.style.transition = 'none'; mascotWrapper.style.left = `${laptopTargetX}px`; mascotWrapper.style.bottom = '6px'; }
-            
-            walkingMascot.style.transition = 'transform 0.3s ease';
-            walkingMascot.style.transform = 'scaleX(1) scaleY(0.9) translateY(2px)';
-            
-            const duration = (Math.floor(Math.random() * 8) + 3) * 1000;
+            walkingMascot.style.transition = 'transform 0.5s ease, top 0.5s ease';
+            // Scale and Snuggle. No negative translation to avoid floating.
+            walkingMascot.style.transform = 'translate(0px, 4px) scaleX(1) rotate(25deg) scaleY(0.85)';
+            walkingMascot.style.top = '0px';
+
             setTimeout(() => {
-                if (isDead || !isUsingLaptop || isDraggingMascot || isThrown) return;
-                isUsingLaptop = false;
-                walkingMascot.style.transform = 'scaleX(1) scaleY(1)';
-                walkTimeout = setTimeout(walkMascot, 1000);
-            }, duration);
+                if (isDead || !isSleeping || isDraggingMascot || isThrown) return; 
+                isSleeping = false;
+                
+                const moodGain = hasPlushie ? 6 : 5;
+                mood += moodGain;
+                if (mood > 100) mood = 100;
+                updateMoodUI();
+                addXp(1);
+
+                walkingMascot.style.transform = 'scaleX(1) rotate(0deg) scaleY(1)';
+                walkingMascot.style.top = '0px';
+                
+                walkTimeout = setTimeout(walkMascot, 1500); 
+            }, 15000);
         }
 
         function walkMascot() {
-            if (isDead || isSleeping || isUsingLaptop || isThrown || isDraggingMascot || isPetting || isPaused || !walkArea || !mascotWrapper) return;
-            if (mood === 0 && !isGoingToFood && !isGoingToSleep) { walkTimeout = setTimeout(walkMascot, 2000); return; }
-            const areaWidth = walkArea.clientWidth; const mascotWidth = 40;
-            let targetX; let speed = 35;
-            const availableToys = [...activeNotes]; if (hasBall) availableToys.push(toyBall);
+            if (isDead || isSleeping || isThrown || isDraggingMascot || isPetting || isPaused || !walkArea || !mascotWrapper) return;
 
-            if (isGoingToSleep) { targetX = areaWidth - 87.5 - 20; speed = 25; }
-            else if (isGoingToFood) { targetX = areaWidth - mascotWidth - 35; speed = 45; }
-            else if (isGoingToLaptop) { targetX = 4; speed = 45; }
-            else if (hasLaptop && Math.random() < 0.2 && !isGoingToToy) { forceWalkToLaptop(); return; }
-            else if (availableToys.length > 0 && Math.random() < 0.4 && energy > 10) { isGoingToToy = availableToys[Math.floor(Math.random()*availableToys.length)]; targetX = Math.max(10, Math.min(isGoingToToy.x - 13, areaWidth - 130)); speed = 60; }
-            else { targetX = Math.random() * (areaWidth - 140) + 10; isGoingToToy = null; }
+            if (mood === 0 && !isGoingToFood && !isGoingToSleep) {
+                walkingMascot.classList.remove('is-walking');
+                walkTimeout = setTimeout(walkMascot, 2000); 
+                return; 
+            }
 
-            const distance = Math.abs(targetX - currentWalkX); const duration = Math.max(distance / speed, 0.5);
-            walkingMascot.style.transform = targetX > currentWalkX ? 'scaleX(-1)' : 'scaleX(1)';
-            mascotWrapper.style.transition = `left ${duration}s linear`; mascotWrapper.style.left = `${targetX}px`; mascotWrapper.style.bottom = '6px';
-            walkingMascot.classList.add('is-walking'); currentWalkX = targetX;
+            const areaWidth = walkArea.clientWidth;
+            const mascotWidth = mascotWrapper.clientWidth || 40;
+            
+            if (areaWidth <= mascotWidth) return;
+
+            let targetX;
+            let speed = 35; 
+            
+            const availableToys = [...activeNotes];
+            if (hasBall) availableToys.push(toyBall);
+
+            if (isGoingToSleep) {
+                // Precise target for bed
+                targetX = areaWidth - 87.5 - (mascotWidth / 2); 
+                speed = 25; 
+            } else if (isGoingToFood) {
+                targetX = areaWidth - mascotWidth - 35; 
+                speed = 45; 
+            } else if (availableToys.length > 0 && Math.random() < 0.4 && energy > 10) {
+                isGoingToToy = availableToys[Math.floor(Math.random() * availableToys.length)];
+                targetX = isGoingToToy.x - (mascotWidth / 2) + 7;
+                targetX = Math.max(10, Math.min(targetX, areaWidth - mascotWidth - 130)); 
+                speed = 60; 
+            } else {
+                targetX = Math.random() * (areaWidth - mascotWidth - 140) + 10; 
+                isGoingToToy = null;
+            }
+
+            if (energy <= 0 && !isGoingToSleep && !isSleeping) {
+                speed *= 0.5; 
+            }
+
+            const distance = Math.abs(targetX - currentWalkX);
+            const duration = Math.max(distance / speed, 0.5); 
+
+            if (targetX > currentWalkX) {
+                walkingMascot.style.transform = 'scaleX(-1)'; 
+            } else {
+                walkingMascot.style.transform = 'scaleX(1)'; 
+            }
+
+            mascotWrapper.style.transition = `left ${duration}s linear`;
+            mascotWrapper.style.left = `${targetX}px`;
+            // Ensure Goob is locked to floor Y during walk
+            mascotWrapper.style.bottom = '6px';
+            walkingMascot.classList.add('is-walking');
+
+            currentWalkX = targetX;
 
             walkTimeout = setTimeout(() => {
                 if (isDead || isDraggingMascot || isThrown || isPetting || isPaused) return;
                 walkingMascot.classList.remove('is-walking');
-                if (isGoingToSleep) startSleepingSequence(false);
-                else if (isGoingToLaptop) startLaptopSequence(false);
-                else if (isGoingToFood) {
+
+                if (isGoingToSleep) {
+                    startSleepingSequence(false);
+                } else if (isGoingToFood) {
                     if (isBowlFull) {
-                        isEating = true; isGoingToFood = false; walkingMascot.style.transform = 'scaleX(-1)';
-                        setTimeout(() => { if (isDead || isDraggingMascot || isThrown || isPaused) return; isBowlFull = false; foodBowl.classList.remove('full'); hunger = 100; hungerFill.style.width = '100%'; hungerFill.style.background = '#1DB954'; mood = Math.min(100, mood+5); updateMoodUI(); addXp(1); isEating = false; walkTimeout = setTimeout(walkMascot, 1500); }, 2000);
-                    } else { isGoingToFood = false; walkTimeout = setTimeout(walkMascot, 1000); }
+                        isEating = true;
+                        isGoingToFood = false;
+                        walkingMascot.style.transform = 'scaleX(-1)';
+                        
+                        setTimeout(() => {
+                            if (isDead || isDraggingMascot || isThrown || isPaused) return;
+                            isBowlFull = false;
+                            foodBowl.classList.remove('full');
+                            
+                            hunger = 100;
+                            hungerFill.style.width = '100%';
+                            hungerFill.style.background = '#1DB954';
+                            
+                            mood += 5;
+                            if (mood > 100) mood = 100;
+                            updateMoodUI();
+                            addXp(1);
+
+                            isEating = false;
+                            walkTimeout = setTimeout(walkMascot, 1500); 
+                        }, 2000); 
+                    } else {
+                        isGoingToFood = false;
+                        walkTimeout = setTimeout(walkMascot, 1000);
+                    }
                 } else if (isGoingToToy) {
-                    const fr = walkingMascot.style.transform.includes('-1'); isGoingToToy.vx = fr ? 12 : -12; isGoingToToy.vy = Math.random()*6+6; isGoingToToy.kickTime = Date.now();
-                    energy = Math.max(0, energy-8); mood = Math.min(100, mood+10); updateMoodUI(); addXp(1); isGoingToToy = null; walkTimeout = setTimeout(walkMascot, 1000);
-                } else walkTimeout = setTimeout(walkMascot, Math.random()*4000 + 1500);
+                    const facingRight = walkingMascot.style.transform.includes('-1');
+                    isGoingToToy.vx = facingRight ? 12 : -12; 
+                    isGoingToToy.vy = Math.random() * 6 + 6; 
+                    isGoingToToy.kickTime = Date.now(); 
+
+                    energy -= 8;
+                    if (energy < 0) energy = 0;
+                    
+                    mood += 10;
+                    if (mood > 100) mood = 100;
+                    updateMoodUI();
+                    addXp(1);
+
+                    isGoingToToy = null;
+                    walkTimeout = setTimeout(walkMascot, 1000); 
+                } else {
+                    walkTimeout = setTimeout(walkMascot, Math.random() * 4000 + 1500);
+                }
             }, duration * 1000);
         }
 
